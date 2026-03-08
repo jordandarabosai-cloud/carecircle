@@ -18,6 +18,7 @@ async function apiRequest({ baseUrl, path, method = "GET", token, body }) {
 }
 
 const tabs = [
+  ["cases", "Cases"],
   ["overview", "Overview"],
   ["timeline", "Timeline"],
   ["calendar", "Calendar"],
@@ -45,7 +46,7 @@ export default function App() {
   const [documents, setDocuments] = useState([]);
   const [invites, setInvites] = useState([]);
 
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState("cases");
   const [compose, setCompose] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("biological_parent");
@@ -63,8 +64,14 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [caseSearch, setCaseSearch] = useState("");
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
+  const filteredCases = useMemo(() => {
+    const q = caseSearch.trim().toLowerCase();
+    if (!q) return cases;
+    return cases.filter((c) => (c.title || "").toLowerCase().includes(q) || (c.id || "").toLowerCase().includes(q));
+  }, [cases, caseSearch]);
   const doneTasks = useMemo(() => tasks.filter((t) => t.status === "done").length, [tasks]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
 
@@ -282,6 +289,29 @@ export default function App() {
             <div className="composer row">
               <input value={compose} onChange={(e) => setCompose(e.target.value)} placeholder={tab === "tasks" ? "Create a task…" : "Write an update…"} />
               <button onClick={quickPost}>Post</button>
+            </div>
+          )}
+
+          {tab === "cases" && (
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>My Cases</h3>
+                <input value={caseSearch} onChange={(e) => setCaseSearch(e.target.value)} placeholder="Search cases…" />
+              </div>
+              <div className="cases-grid">
+                {filteredCases.map((c) => (
+                  <div key={c.id} className={`item case-card ${caseId === c.id ? "active" : ""}`}>
+                    <div>
+                      <div className="case-title">{c.title}</div>
+                      <div className="muted">{c.id}</div>
+                    </div>
+                    <div className="row">
+                      <button className="secondary" onClick={() => { setCaseId(c.id); setTab("overview"); }}>Open Dashboard</button>
+                    </div>
+                  </div>
+                ))}
+                {filteredCases.length === 0 ? <div className="muted">No cases found.</div> : null}
+              </div>
             </div>
           )}
 
