@@ -38,6 +38,15 @@ const parentTabs = [
   ["cases", "Cases"],
 ];
 
+const DOC_CATEGORY_META = {
+  all: { label: "All", icon: "🗂️" },
+  school: { label: "School", icon: "🏫" },
+  medical: { label: "Medical", icon: "🩺" },
+  court: { label: "Court", icon: "⚖️" },
+  visits: { label: "Visits", icon: "🤝" },
+  general: { label: "General", icon: "📄" },
+};
+
 export default function App() {
   const [apiBase, setApiBase] = useState(() => localStorage.getItem("cc_api_base") || defaultApiBase);
   const [email, setEmail] = useState("worker@carecircle.dev");
@@ -437,13 +446,13 @@ export default function App() {
                     return (
                       <button
                         key={cat}
-                        className={docFilterCategory === cat ? "chip active" : "chip"}
+                        className={docFilterCategory === cat ? `chip active cat-${cat}` : `chip cat-${cat}`}
                         onClick={() => {
                           setDocFilterCategory(cat);
                           setTab("documents");
                         }}
                       >
-                        {cat} ({docs.length})
+                        {DOC_CATEGORY_META[cat]?.icon || "📄"} {DOC_CATEGORY_META[cat]?.label || cat} ({docs.length})
                       </button>
                     );
                   })}
@@ -606,8 +615,8 @@ export default function App() {
                   const docs = cat === "all" ? documents : documents.filter((d) => (d.category || "general") === cat);
                   if (cat !== "all" && !docs.length) return null;
                   return (
-                    <button key={cat} className={docFilterCategory === cat ? "chip active" : "chip"} onClick={() => setDocFilterCategory(cat)}>
-                      {cat} ({docs.length})
+                    <button key={cat} className={docFilterCategory === cat ? `chip active cat-${cat}` : `chip cat-${cat}`} onClick={() => setDocFilterCategory(cat)}>
+                      {DOC_CATEGORY_META[cat]?.icon || "📄"} {DOC_CATEGORY_META[cat]?.label || cat} ({docs.length})
                     </button>
                   );
                 })}

@@ -64,6 +64,11 @@ input, select { background: #fff; min-height: 40px; }
 
 button.chip { background: #eef2ff; color: #1e3a8a; border: 1px solid #c7d2fe; border-radius: 999px; padding: 6px 10px; font-size: 12px; }
 button.chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+button.chip.cat-school { background: #fefce8; color: #854d0e; border-color: #fde68a; }
+button.chip.cat-medical { background: #ecfeff; color: #155e75; border-color: #a5f3fc; }
+button.chip.cat-court { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
+button.chip.cat-visits { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+button.chip.cat-general { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
 
 .calendar-wrap { display: grid; gap: 10px; }
 .calendar-grid-head { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; color: #64748b; font-size: 12px; font-weight: 600; }
