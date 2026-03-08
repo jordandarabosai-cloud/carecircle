@@ -17,7 +17,7 @@ async function apiRequest({ baseUrl, path, method = "GET", token, body }) {
   return json;
 }
 
-const tabs = [
+const baseTabs = [
   ["cases", "Cases"],
   ["overview", "Overview"],
   ["timeline", "Timeline"],
@@ -67,8 +67,23 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [caseSearch, setCaseSearch] = useState("");
+  const [managerCases, setManagerCases] = useState([]);
+  const [managerWorkers, setManagerWorkers] = useState([]);
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
+  const tabs = useMemo(() => {
+    const role = user?.role;
+    const canManage = role === "admin" || role === "case_worker";
+    const isParent = role === "biological_parent" || role === "foster_parent";
+
+    let list = [...baseTabs];
+    if (isParent) {
+      list = list.filter(([k]) => k !== "invites");
+    }
+    if (canManage) list = [["manager", "Manager"], ...list];
+    return list;
+  }, [user?.role]);
+
   const filteredCases = useMemo(() => {
     const q = caseSearch.trim().toLowerCase();
     if (!q) return cases;
@@ -138,8 +153,17 @@ export default function App() {
   }, [caseId]);
 
   useEffect(() => {
+    if (!tabs.some(([k]) => k === tab)) {
+      setTab(tabs[0]?.[0] || "overview");
+    }
+  }, [tabs, tab]);
+
+  useEffect(() => {
     if (tab === "calendar" && calendarScope === "all" && token) {
       loadAllCalendarEvents();
+    }
+    if (tab === "manager" && token) {
+      loadManagerData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, calendarScope, token, cases.length]);
@@ -185,6 +209,33 @@ export default function App() {
         apiRequest({ baseUrl: apiBase, path: `/cases/${caseId}/invites`, token }).catch(() => ({ invites: [] })),
       ]);
       setTimeline(t.events || []); setTasks(k.tasks || []); setMessages(m.messages || []); setDocuments(d.documents || []); setInvites(i.invites || []);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function loadManagerData() {
+    setLoading(true); setError("");
+    try {
+      const [c, w] = await Promise.all([
+        apiRequest({ baseUrl: apiBase, path: "/management/cases", token }),
+        apiRequest({ baseUrl: apiBase, path: "/management/caseworkers", token }),
+      ]);
+      setManagerCases(c.cases || []);
+      setManagerWorkers(w.caseworkers || []);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function assignCaseWorker(managedCaseId, caseWorkerUserId) {
+    if (!managedCaseId || !caseWorkerUserId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/management/cases/${managedCaseId}/assign`,
+        method: "POST",
+        token,
+        body: { caseWorkerUserId },
+      });
+      await Promise.all([loadManagerData(), refreshCases()]);
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -328,6 +379,37 @@ export default function App() {
             <div className="composer row">
               <input value={compose} onChange={(e) => setCompose(e.target.value)} placeholder={tab === "tasks" ? "Create a task…" : "Write an update…"} />
               <button onClick={quickPost}>Post</button>
+            </div>
+          )}
+
+          {tab === "manager" && (
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>Management Console</h3>
+                <button className="secondary" onClick={loadManagerData}>Refresh Console</button>
+              </div>
+              <div className="muted">Assign or reassign case workers across all cases.</div>
+              <div className="cases-grid">
+                {managerCases.map((mc) => (
+                  <div key={mc.id} className="item case-card">
+                    <div>
+                      <div className="case-title">{mc.title}</div>
+                      <div className="muted">Current worker: {mc.primaryCaseWorkerName || "Unassigned"}</div>
+                    </div>
+                    <div className="row">
+                      <select
+                        defaultValue=""
+                        onChange={(e) => assignCaseWorker(mc.id, e.target.value)}
+                      >
+                        <option value="" disabled>Assign case worker…</option>
+                        {managerWorkers.map((w) => (
+                          <option key={w.id} value={w.id}>{w.fullName} ({w.assignedCaseCount})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

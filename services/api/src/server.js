@@ -285,6 +285,92 @@ app.get("/cases", async (req, res) => {
   res.json({ cases });
 });
 
+app.get("/management/cases", requireRole("admin", "case_worker"), async (req, res) => {
+  const result = await query(
+    `SELECT c.id, c.title, c.created_at, c.created_by,
+            u.full_name AS primary_case_worker_name,
+            u.id AS primary_case_worker_id,
+            (SELECT COUNT(*)::int FROM case_members cm2 WHERE cm2.case_id = c.id) AS member_count
+     FROM cases c
+     LEFT JOIN LATERAL (
+       SELECT cm.user_id
+       FROM case_members cm
+       WHERE cm.case_id = c.id AND cm.role = 'case_worker'
+       ORDER BY cm.added_at ASC
+       LIMIT 1
+     ) cw ON true
+     LEFT JOIN users u ON u.id = cw.user_id
+     ORDER BY c.created_at DESC`
+  );
+
+  const cases = result.rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    createdAt: r.created_at,
+    createdBy: r.created_by,
+    primaryCaseWorkerId: r.primary_case_worker_id,
+    primaryCaseWorkerName: r.primary_case_worker_name,
+    memberCount: r.member_count,
+  }));
+
+  return res.json({ cases });
+});
+
+app.get("/management/caseworkers", requireRole("admin", "case_worker"), async (req, res) => {
+  const result = await query(
+    `SELECT u.id, u.full_name, u.email,
+            COUNT(cm.case_id)::int AS assigned_case_count
+     FROM users u
+     LEFT JOIN case_members cm ON cm.user_id = u.id AND cm.role = 'case_worker'
+     WHERE u.role = 'case_worker'
+     GROUP BY u.id, u.full_name, u.email
+     ORDER BY u.full_name ASC`
+  );
+
+  const caseworkers = result.rows.map((r) => ({
+    id: r.id,
+    fullName: r.full_name,
+    email: r.email,
+    assignedCaseCount: r.assigned_case_count,
+  }));
+
+  return res.json({ caseworkers });
+});
+
+app.post("/management/cases/:caseId/assign", requireRole("admin", "case_worker"), async (req, res) => {
+  const { caseId } = req.params;
+  const { caseWorkerUserId } = req.body || {};
+  if (!caseWorkerUserId) return res.status(400).json({ error: "caseWorkerUserId is required" });
+
+  const workerResult = await query(
+    `SELECT id, role, full_name FROM users WHERE id = $1 LIMIT 1`,
+    [caseWorkerUserId]
+  );
+  const worker = workerResult.rows[0];
+  if (!worker) return res.status(404).json({ error: "Case worker user not found" });
+  if (worker.role !== "case_worker") return res.status(400).json({ error: "Selected user is not a case_worker" });
+
+  const caseResult = await query(`SELECT id FROM cases WHERE id = $1 LIMIT 1`, [caseId]);
+  if (!caseResult.rowCount) return res.status(404).json({ error: "Case not found" });
+
+  await query(
+    `INSERT INTO case_members(id, case_id, user_id, role)
+     VALUES ($1,$2,$3,'case_worker')
+     ON CONFLICT(case_id,user_id) DO UPDATE SET role = EXCLUDED.role`,
+    [randomUUID(), caseId, caseWorkerUserId]
+  );
+
+  await req.audit({
+    caseId,
+    action: "management.assign_case_worker",
+    resourceType: "case_member",
+    resourceId: caseWorkerUserId,
+    meta: { caseWorkerUserId },
+  });
+
+  return res.status(201).json({ assigned: true, caseId, caseWorkerUserId, caseWorkerName: worker.full_name });
+});
+
 app.post("/cases", requireRole("admin", "case_worker"), async (req, res) => {
   const { title } = req.body || {};
   if (!title || !title.trim()) return res.status(400).json({ error: "title is required" });
