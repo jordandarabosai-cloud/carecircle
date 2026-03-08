@@ -1,4 +1,4 @@
-# CaseBridge (working name)
+# CareCircle
 
 Shared case coordination platform for foster parents, biological parents, case workers, and GAL/CASA.
 
@@ -16,4 +16,4 @@ Shared case coordination platform for foster parents, biological parents, case w
 - `docs` - product and technical documentation
 
 ## Status
-Project initialized. MVP planning and architecture in progress.
+Project initialized. MVP planning and architecture in progress for CareCircle.
