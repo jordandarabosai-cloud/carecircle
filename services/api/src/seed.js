@@ -36,11 +36,11 @@ export const seedUsers = [
 const workerId = "c3577a4f-8f7d-4a87-95ad-458cf7fd3c63";
 
 const seedCases = [
-  { id: "6c72dd14-d4b8-4903-96c9-8eac0efaf748", title: "A.R. Placement Support", createdBy: workerId },
-  { id: "8f41e0d1-f9bc-4a3a-939d-cf710af49dc1", title: "J.M. Reunification Planning", createdBy: workerId },
-  { id: "9d873980-c8a2-42b8-a8dc-5472f3d87fd2", title: "K.S. School Stability", createdBy: workerId },
-  { id: "2f5f0e9a-bdb7-4c4a-8ea1-72705d1a67f4", title: "L.T. Medical Coordination", createdBy: workerId },
-  { id: "c72d6884-f4b0-4f2e-8f91-a9478f7e28a9", title: "D.P. Family Visit Scheduling", createdBy: workerId },
+  { id: "6c72dd14-d4b8-4903-96c9-8eac0efaf748", title: "Lee Johnson", createdBy: workerId },
+  { id: "8f41e0d1-f9bc-4a3a-939d-cf710af49dc1", title: "Maya Thompson", createdBy: workerId },
+  { id: "9d873980-c8a2-42b8-a8dc-5472f3d87fd2", title: "Carlos Rivera", createdBy: workerId },
+  { id: "2f5f0e9a-bdb7-4c4a-8ea1-72705d1a67f4", title: "Alicia Brooks", createdBy: workerId },
+  { id: "c72d6884-f4b0-4f2e-8f91-a9478f7e28a9", title: "Devon Carter", createdBy: workerId },
 ];
 
 const seedTimelineEvents = [
@@ -73,7 +73,7 @@ export async function ensureSeedData(query) {
     await query(
       `INSERT INTO cases(id, title, created_by)
        VALUES ($1,$2,$3)
-       ON CONFLICT(id) DO NOTHING`,
+       ON CONFLICT(id) DO UPDATE SET title = EXCLUDED.title`,
       [c.id, c.title, c.createdBy]
     );
 
