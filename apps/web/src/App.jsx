@@ -166,7 +166,10 @@ export default function App() {
     return (
       <div className="auth-shell">
         <div className="auth-card">
-          <h1>CareCircle</h1>
+          <div className="brand">
+            <img src="/carecircle-logo.svg" alt="CareCircle logo" className="brand-logo" />
+            <h1>CareCircle</h1>
+          </div>
           <p className="muted">Secure case coordination for families and care teams.</p>
           <label>Email</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
@@ -186,7 +189,10 @@ export default function App() {
   return (
     <div className="layout">
       <aside className="sidebar">
-        <h2>CareCircle</h2>
+        <div className="brand brand-sidebar">
+          <img src="/carecircle-logo.svg" alt="CareCircle logo" className="brand-logo small" />
+          <h2>CareCircle</h2>
+        </div>
         <div className="user-block">
           <div className="user-name">{user?.fullName}</div>
           <div className="muted">{user?.role}</div>

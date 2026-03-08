@@ -1,0 +1,16 @@
+<svg width="920" height="220" viewBox="0 0 920 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="12" y1="12" x2="208" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="12" y="12" width="196" height="196" rx="54" fill="url(#bg)"/>
+  <circle cx="110" cy="110" r="56" stroke="#F8FAFC" stroke-width="14"/>
+  <circle cx="110" cy="110" r="31" fill="#F8FAFC"/>
+  <path d="M89 111C89 99.402 98.402 90 110 90C121.598 90 131 99.402 131 111" stroke="#1D4ED8" stroke-width="9" stroke-linecap="round"/>
+
+  <text x="246" y="128" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="84" font-weight="700" fill="#0F172A">CareCircle</text>
+  <text x="248" y="168" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="500" fill="#475569">Care coordination, clearly connected.</text>
+</svg>
