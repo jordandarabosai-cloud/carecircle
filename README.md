@@ -71,6 +71,9 @@ Expected output includes:
 ### API spec
 - OpenAPI file: `services/api/openapi.json`
 
+### Deployment runbook
+- `docs/DEPLOYMENT.md`
+
 ### Seed accounts (for OTP auth)
 Request/verify auth code with one of:
 - `admin@carecircle.dev`
@@ -96,6 +99,7 @@ Auth hardening added:
 
 ### Implemented endpoints
 - `GET /health`
+- `GET /ready`
 - `GET /roles`
 - `POST /auth/request-code`
 - `POST /auth/verify-code`

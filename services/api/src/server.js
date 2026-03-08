@@ -6,9 +6,17 @@ import { query, runMigrations } from "./db.js";
 import { ensureSeedData } from "./seed.js";
 import { requireRole, canAccessCase, caseRole, roleAtLeast } from "./rbac.js";
 import { deliverAuthCode } from "./authDelivery.js";
+import { loadConfig } from "./config.js";
+
+const config = loadConfig();
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  req.requestId = randomUUID();
+  res.setHeader("X-Request-Id", req.requestId);
+  next();
+});
 
 const TIMELINE_TYPES = new Set(["note", "hearing", "visit", "status", "task"]);
 const VALID_ROLES = new Set(["foster_parent", "biological_parent", "case_worker", "gal", "admin"]);
@@ -26,6 +34,11 @@ function canViewDocument(role, visibility) {
 app.get("/health", async (_req, res) => {
   await query("SELECT 1");
   res.json({ ok: true, service: "carecircle-api", db: "up" });
+});
+
+app.get("/ready", async (_req, res) => {
+  await query("SELECT 1");
+  res.json({ ok: true, ready: true, authCodeDeliveryMode: config.authCodeDeliveryMode });
 });
 
 app.get("/roles", (_req, res) => {
@@ -92,12 +105,17 @@ app.post("/auth/request-code", async (req, res) => {
     [randomUUID(), row.id, code, expiresAt]
   );
 
-  const delivery = await deliverAuthCode({ email: row.email, code, expiresAt });
+  try {
+    const delivery = await deliverAuthCode({ email: row.email, code, expiresAt });
 
-  const response = { ok: true, expiresAt, deliveryMode: delivery.mode };
-  if (delivery.devCode) response.devCode = delivery.devCode;
+    const response = { ok: true, expiresAt, deliveryMode: delivery.mode };
+    if (delivery.devCode) response.devCode = delivery.devCode;
 
-  return res.json(response);
+    return res.json(response);
+  } catch (err) {
+    console.error("auth code delivery failed", { requestId: req.requestId, error: err?.message || String(err) });
+    return res.status(500).json({ error: "Failed to deliver auth code", requestId: req.requestId });
+  }
 });
 
 app.post("/auth/verify-code", async (req, res) => {
@@ -729,7 +747,16 @@ app.get("/cases/:caseId/audit", async (req, res) => {
   return res.json({ caseId, events });
 });
 
-const port = process.env.PORT || 4010;
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found", requestId: req.requestId });
+});
+
+app.use((err, req, res, _next) => {
+  console.error("Unhandled error", { requestId: req?.requestId, error: err?.message || String(err) });
+  res.status(500).json({ error: "Internal server error", requestId: req?.requestId || null });
+});
+
+const port = config.port;
 
 async function bootstrap() {
   await runMigrations();

@@ -61,6 +61,12 @@
         "responses": { "200": { "description": "OK" } }
       }
     },
+    "/ready": {
+      "get": {
+        "summary": "Readiness check",
+        "responses": { "200": { "description": "Ready" } }
+      }
+    },
     "/roles": {
       "get": {
         "summary": "List roles",
