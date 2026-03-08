@@ -20,6 +20,7 @@ async function apiRequest({ baseUrl, path, method = "GET", token, body }) {
 const tabs = [
   ["overview", "Overview"],
   ["timeline", "Timeline"],
+  ["calendar", "Calendar"],
   ["tasks", "Tasks"],
   ["messages", "Messages"],
   ["documents", "Documents"],
@@ -51,6 +52,14 @@ export default function App() {
   const [docName, setDocName] = useState("");
   const [docVisibility, setDocVisibility] = useState("all");
   const [docFile, setDocFile] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const [selectedDayKey, setSelectedDayKey] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -58,6 +67,48 @@ export default function App() {
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const doneTasks = useMemo(() => tasks.filter((t) => t.status === "done").length, [tasks]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
+
+  const calendarEvents = useMemo(() => {
+    const out = [];
+    for (const e of timeline) {
+      if (!e.createdAt) continue;
+      out.push({ id: `tl-${e.id}`, type: "timeline", label: e.text, date: new Date(e.createdAt) });
+    }
+    for (const t of tasks) {
+      if (!t.dueAt && !t.createdAt) continue;
+      out.push({ id: `task-${t.id}`, type: "task", label: `${t.title} (${t.status})`, date: new Date(t.dueAt || t.createdAt) });
+    }
+    return out.filter((x) => !Number.isNaN(x.date.getTime()));
+  }, [timeline, tasks]);
+
+  const monthGrid = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const first = new Date(year, month, 1);
+    const startOffset = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const cells = [];
+    for (let i = 0; i < startOffset; i++) cells.push(null);
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(year, month, day);
+      const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const count = calendarEvents.filter((ev) => {
+        const evKey = `${ev.date.getFullYear()}-${String(ev.date.getMonth() + 1).padStart(2, "0")}-${String(ev.date.getDate()).padStart(2, "0")}`;
+        return evKey === key;
+      }).length;
+      cells.push({ day, key, count });
+    }
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [calendarMonth, calendarEvents]);
+
+  const selectedDayEvents = useMemo(() => {
+    return calendarEvents.filter((ev) => {
+      const evKey = `${ev.date.getFullYear()}-${String(ev.date.getMonth() + 1).padStart(2, "0")}-${String(ev.date.getDate()).padStart(2, "0")}`;
+      return evKey === selectedDayKey;
+    });
+  }, [calendarEvents, selectedDayKey]);
 
   useEffect(() => localStorage.setItem("cc_api_base", apiBase), [apiBase]);
   useEffect(() => token ? localStorage.setItem("cc_token", token) : localStorage.removeItem("cc_token"), [token]);
@@ -248,6 +299,48 @@ export default function App() {
           )}
 
           {tab === "timeline" && timeline.map((e) => <div key={e.id} className="item">[{e.type}] {e.text}</div>)}
+
+          {tab === "calendar" && (
+            <div className="calendar-wrap">
+              <div className="row between">
+                <h3>
+                  {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
+                </h3>
+                <div className="row">
+                  <button className="secondary" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>Prev</button>
+                  <button className="secondary" onClick={() => setCalendarMonth(new Date())}>Today</button>
+                  <button className="secondary" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>Next</button>
+                </div>
+              </div>
+              <div className="calendar-grid-head">
+                {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d) => <div key={d}>{d}</div>)}
+              </div>
+              <div className="calendar-grid">
+                {monthGrid.map((cell, idx) => (
+                  <button
+                    key={idx}
+                    className={`calendar-cell ${cell ? "" : "empty"} ${cell && cell.key === selectedDayKey ? "active" : ""}`}
+                    disabled={!cell}
+                    onClick={() => cell && setSelectedDayKey(cell.key)}
+                  >
+                    {cell ? (
+                      <>
+                        <span>{cell.day}</span>
+                        {cell.count > 0 ? <span className="dot">{cell.count}</span> : null}
+                      </>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <h4>Events on {selectedDayKey}</h4>
+                {selectedDayEvents.length === 0 ? <div className="muted">No items for this day.</div> : null}
+                {selectedDayEvents.map((ev) => (
+                  <div key={ev.id} className="item">[{ev.type}] {ev.label}</div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {tab === "tasks" && tasks.map((t) => (
             <div key={t.id} className="item task-row">
