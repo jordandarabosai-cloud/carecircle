@@ -16,10 +16,21 @@ Shared case coordination platform for foster parents, biological parents, case w
 - `docs` - product and technical documentation
 
 ## API Quickstart
+1) Start Postgres (local) and create DB `carecircle`
+2) Set `DATABASE_URL` (optional if using default below)
+3) Install and run API
+
 ```bash
 npm install
 npm run dev:api
 ```
+
+Default DB URL used by API if none provided:
+`postgres://postgres:postgres@localhost:5432/carecircle`
+
+On startup, API automatically:
+- runs SQL migrations in `services/api/migrations`
+- seeds demo users/case data
 
 Server starts at `http://localhost:4010`.
 
@@ -46,4 +57,4 @@ Pass returned token as `Authorization: Bearer <token>`.
 - `GET /cases/:caseId/audit` (gal/case_worker/admin)
 
 ## Status
-MVP scaffold implemented for core auth + role-aware case timeline flow (in-memory data). Next step is Postgres persistence and production auth.
+MVP scaffold implemented for core auth + role-aware case timeline flow with Postgres-backed persistence.

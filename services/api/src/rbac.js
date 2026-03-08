@@ -19,13 +19,20 @@ export function requireRole(...roles) {
   };
 }
 
-export function canAccessCase(data, userId, caseId) {
-  const member = data.case_members.find((m) => m.caseId === caseId && m.userId === userId);
-  return Boolean(member);
+export async function canAccessCase(query, userId, caseId) {
+  const result = await query(
+    "SELECT 1 FROM case_members WHERE case_id = $1 AND user_id = $2 LIMIT 1",
+    [caseId, userId]
+  );
+  return result.rowCount > 0;
 }
 
-export function caseRole(data, userId, caseId) {
-  return data.case_members.find((m) => m.caseId === caseId && m.userId === userId)?.role || null;
+export async function caseRole(query, userId, caseId) {
+  const result = await query(
+    "SELECT role FROM case_members WHERE case_id = $1 AND user_id = $2 LIMIT 1",
+    [caseId, userId]
+  );
+  return result.rows[0]?.role || null;
 }
 
 export function roleAtLeast(role, minimumRole) {
