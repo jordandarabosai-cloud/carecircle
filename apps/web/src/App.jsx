@@ -90,6 +90,7 @@ export default function App() {
   const [caseSearch, setCaseSearch] = useState("");
   const [managerCases, setManagerCases] = useState([]);
   const [managerWorkers, setManagerWorkers] = useState([]);
+  const [managerUsers, setManagerUsers] = useState([]);
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const tabs = useMemo(() => {
@@ -253,12 +254,14 @@ export default function App() {
   async function loadManagerData() {
     setLoading(true); setError("");
     try {
-      const [c, w] = await Promise.all([
+      const [c, w, u] = await Promise.all([
         apiRequest({ baseUrl: apiBase, path: "/management/cases", token }),
         apiRequest({ baseUrl: apiBase, path: "/management/caseworkers", token }),
+        apiRequest({ baseUrl: apiBase, path: "/management/users", token }).catch(() => ({ users: [] })),
       ]);
       setManagerCases(c.cases || []);
       setManagerWorkers(w.caseworkers || []);
+      setManagerUsers(u.users || []);
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -274,6 +277,21 @@ export default function App() {
         body: { caseWorkerUserId },
       });
       await Promise.all([loadManagerData(), refreshCases()]);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function updateUserRole(userId, role) {
+    if (!userId || !role) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/management/users/${userId}/role`,
+        method: "PATCH",
+        token,
+        body: { role },
+      });
+      await loadManagerData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -490,6 +508,32 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
+              {user?.role === "admin" && (
+                <>
+                  <h3>Account Types</h3>
+                  <div className="muted">Assign roles/account types for platform users.</div>
+                  <div className="cases-grid">
+                    {managerUsers.map((u) => (
+                      <div key={u.id} className="item case-card">
+                        <div>
+                          <div className="case-title">{u.fullName}</div>
+                          <div className="muted">{u.email}</div>
+                        </div>
+                        <div className="row">
+                          <select value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)}>
+                            <option value="admin">admin</option>
+                            <option value="case_worker">case_worker</option>
+                            <option value="gal">gal</option>
+                            <option value="foster_parent">foster_parent</option>
+                            <option value="biological_parent">biological_parent</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
