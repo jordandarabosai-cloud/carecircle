@@ -1,0 +1,9 @@
+{
+  "name": "@carecircle/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "dev": "echo \"Expo shell scaffolded. Install Expo and run: npx expo start\""
+  }
+}

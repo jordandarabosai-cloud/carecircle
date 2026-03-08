@@ -1,5 +1,7 @@
 export type Role = "foster_parent" | "biological_parent" | "case_worker" | "gal" | "admin";
 
+export type TimelineEventType = "note" | "hearing" | "visit" | "status" | "task";
+
 export interface User {
   id: string;
   email: string;
@@ -11,13 +13,33 @@ export interface CaseRecord {
   id: string;
   title: string;
   createdAt: string;
+  createdBy: string;
+}
+
+export interface CaseMember {
+  id: string;
+  caseId: string;
+  userId: string;
+  role: Role;
+  addedAt: string;
 }
 
 export interface TimelineEvent {
   id: string;
   caseId: string;
-  type: "note" | "hearing" | "visit" | "status" | "task";
+  type: TimelineEventType;
   text: string;
   createdBy: string;
+  createdAt: string;
+}
+
+export interface AuditEvent {
+  id: string;
+  actorUserId: string;
+  caseId?: string;
+  action: string;
+  resourceType: "case" | "case_member" | "timeline_event" | "auth";
+  resourceId: string;
+  meta?: Record<string, unknown> | null;
   createdAt: string;
 }

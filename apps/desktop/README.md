@@ -1,8 +1,8 @@
-# CareCircle Desktop
+# Desktop App (Electron shell)
 
-Planned stack: Electron + React.
+Scaffold placeholder for CareCircle desktop app.
 
-## MVP focus
-- Secure sign-in
-- Timeline + messaging
-- Document upload workflows
+## Next
+- Install Electron + bundler (Vite/React)
+- Replace `main.js` with browser window + preload setup
+- Add document and case workflow screens

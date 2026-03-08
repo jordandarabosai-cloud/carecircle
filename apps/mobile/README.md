@@ -1,11 +1,8 @@
-# CareCircle Mobile
+# Mobile App (Expo shell)
 
-Planned stack: React Native + Expo.
+Scaffold placeholder for CareCircle mobile app.
 
-## MVP screens
-- Sign in
-- Case switcher
-- Timeline
-- Tasks
-- Messages
-- Documents
+## Next
+- Install Expo dependencies
+- Replace `index.js` with a real React Native app entry
+- Add auth, case list, and timeline screens
