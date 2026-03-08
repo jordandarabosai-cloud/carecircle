@@ -86,11 +86,20 @@ export async function ensureSeedData(query) {
       [u.id, u.email, u.fullName, u.role]
     );
 
+    const orgRoleByGlobalRole = {
+      admin: "agency_admin",
+      dev_admin: "agency_admin",
+      case_worker: "case_worker",
+      foster_parent: "foster_parent",
+      biological_parent: "biological_parent",
+      gal: "gal",
+    };
+
     await query(
       `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
-      [randomUUID(), defaultCustomer.id, u.id, u.role === "admin" || u.role === "dev_admin" ? "owner" : "member"]
+      [randomUUID(), defaultCustomer.id, u.id, orgRoleByGlobalRole[u.role] || "member"]
     );
   }
 

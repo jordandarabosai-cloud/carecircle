@@ -113,6 +113,7 @@ export default function App() {
   const [managerWorkers, setManagerWorkers] = useState([]);
   const [managerUsers, setManagerUsers] = useState([]);
   const [devCustomers, setDevCustomers] = useState([]);
+  const [orgAssignRole, setOrgAssignRole] = useState("member");
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const tabs = useMemo(() => {
@@ -324,25 +325,25 @@ export default function App() {
   async function loadDevelopmentData() {
     setLoading(true); setError("");
     try {
-      const [customers, users] = await Promise.all([
-        apiRequest({ baseUrl: apiBase, path: "/development/customers", token }),
+      const [organizations, users] = await Promise.all([
+        apiRequest({ baseUrl: apiBase, path: "/development/organizations", token }),
         apiRequest({ baseUrl: apiBase, path: "/management/users", token }),
       ]);
-      setDevCustomers(customers.customers || []);
+      setDevCustomers(organizations.organizations || []);
       setManagerUsers(users.users || []);
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
-  async function assignUserToCustomer(customerId, userId) {
+  async function assignUserToCustomer(customerId, userId, organizationRole = "member") {
     if (!customerId || !userId) return;
     setLoading(true); setError("");
     try {
       await apiRequest({
         baseUrl: apiBase,
-        path: `/development/customers/${customerId}/users/assign`,
+        path: `/development/organizations/${customerId}/users/assign`,
         method: "POST",
         token,
-        body: { userId, membershipRole: "member" },
+        body: { userId, organizationRole },
       });
       await loadDevelopmentData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
@@ -552,7 +553,20 @@ export default function App() {
                 <h3>Development Admin Console</h3>
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh Dev Console</button>
               </div>
-              <div className="muted">Assign users to customers/organizations at the platform level.</div>
+              <div className="muted">Assign users to organizations and set their organization-level role.</div>
+
+              <div className="row">
+                <label className="muted">Organization Role</label>
+                <select value={orgAssignRole} onChange={(e) => setOrgAssignRole(e.target.value)}>
+                  <option value="agency_admin">Agency Admin</option>
+                  <option value="manager">Manager</option>
+                  <option value="case_worker">Case Worker</option>
+                  <option value="foster_parent">Foster Parent</option>
+                  <option value="biological_parent">Biological Parent</option>
+                  <option value="gal">GAL / CASA</option>
+                  <option value="member">Member</option>
+                </select>
+              </div>
 
               <div className="cases-grid">
                 {devCustomers.map((c) => (
@@ -562,8 +576,8 @@ export default function App() {
                       <div className="muted">{c.userCount} users • {c.caseCount} cases</div>
                     </div>
                     <div className="row">
-                      <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value)}>
-                        <option value="" disabled>Assign user to customer…</option>
+                      <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value, orgAssignRole)}>
+                        <option value="" disabled>Assign user to organization…</option>
                         {managerUsers.map((u) => (
                           <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>
                         ))}

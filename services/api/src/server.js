@@ -448,7 +448,7 @@ app.get("/development/customers", requireRole("dev_admin"), async (_req, res) =>
      ORDER BY c.name ASC`
   );
 
-  const customers = result.rows.map((r) => ({
+  const organizations = result.rows.map((r) => ({
     id: r.id,
     name: r.name,
     createdAt: r.created_at,
@@ -456,7 +456,7 @@ app.get("/development/customers", requireRole("dev_admin"), async (_req, res) =>
     caseCount: r.case_count,
   }));
 
-  return res.json({ customers });
+  return res.json({ organizations, customers: organizations });
 });
 
 app.post("/development/customers/:customerId/users/assign", requireRole("dev_admin"), async (req, res) => {
@@ -464,7 +464,7 @@ app.post("/development/customers/:customerId/users/assign", requireRole("dev_adm
   const { userId, membershipRole } = req.body || {};
   if (!userId) return res.status(400).json({ error: "userId is required" });
 
-  const allowedMembership = new Set(["owner", "admin", "member"]);
+  const allowedMembership = new Set(["agency_admin", "manager", "case_worker", "foster_parent", "biological_parent", "gal", "member"]);
   const safeMembership = allowedMembership.has(membershipRole) ? membershipRole : "member";
 
   const customer = await query("SELECT id, name FROM customers WHERE id = $1 LIMIT 1", [customerId]);
@@ -485,6 +485,58 @@ app.post("/development/customers/:customerId/users/assign", requireRole("dev_adm
     customerId,
     userId,
     membershipRole: safeMembership,
+  });
+});
+
+app.get("/development/organizations", requireRole("dev_admin"), async (_req, res) => {
+  const result = await query(
+    `SELECT c.id, c.name, c.created_at,
+            COUNT(cu.user_id)::int AS user_count,
+            COUNT(cs.id)::int AS case_count
+     FROM customers c
+     LEFT JOIN customer_users cu ON cu.customer_id = c.id
+     LEFT JOIN cases cs ON cs.customer_id = c.id
+     GROUP BY c.id, c.name, c.created_at
+     ORDER BY c.name ASC`
+  );
+
+  const organizations = result.rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    createdAt: r.created_at,
+    userCount: r.user_count,
+    caseCount: r.case_count,
+  }));
+
+  return res.json({ organizations });
+});
+
+app.post("/development/organizations/:customerId/users/assign", requireRole("dev_admin"), async (req, res) => {
+  const { customerId } = req.params;
+  const { userId, organizationRole } = req.body || {};
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+
+  const allowedMembership = new Set(["agency_admin", "manager", "case_worker", "foster_parent", "biological_parent", "gal", "member"]);
+  const safeMembership = allowedMembership.has(organizationRole) ? organizationRole : "member";
+
+  const customer = await query("SELECT id, name FROM customers WHERE id = $1 LIMIT 1", [customerId]);
+  if (!customer.rowCount) return res.status(404).json({ error: "Organization not found" });
+
+  const user = await query("SELECT id, email, full_name FROM users WHERE id = $1 LIMIT 1", [userId]);
+  if (!user.rowCount) return res.status(404).json({ error: "User not found" });
+
+  await query(
+    `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
+    [randomUUID(), customerId, userId, safeMembership]
+  );
+
+  return res.status(201).json({
+    assigned: true,
+    organizationId: customerId,
+    userId,
+    organizationRole: safeMembership,
   });
 });
 
