@@ -118,6 +118,15 @@ export default function App() {
   const [devOrgUsers, setDevOrgUsers] = useState([]);
   const [orgAssignRole, setOrgAssignRole] = useState("member");
   const [caseAssignRole, setCaseAssignRole] = useState("case_worker");
+  const [newCaseTitle, setNewCaseTitle] = useState("");
+  const [newCaseChildFirstName, setNewCaseChildFirstName] = useState("");
+  const [newCaseChildLastName, setNewCaseChildLastName] = useState("");
+  const [newCaseBioParentName, setNewCaseBioParentName] = useState("");
+  const [newCaseFosterParentName, setNewCaseFosterParentName] = useState("");
+  const [newCasePriority, setNewCasePriority] = useState("normal");
+  const [newCaseStatus, setNewCaseStatus] = useState("open");
+  const [newCaseSummary, setNewCaseSummary] = useState("");
+  const [newCaseOrganizationId, setNewCaseOrganizationId] = useState("");
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const tabs = useMemo(() => {
@@ -404,6 +413,44 @@ export default function App() {
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
+  async function createCase() {
+    if (!newCaseTitle.trim()) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: "/cases",
+        method: "POST",
+        token,
+        body: {
+          title: newCaseTitle.trim(),
+          childFirstName: newCaseChildFirstName || undefined,
+          childLastName: newCaseChildLastName || undefined,
+          biologicalParentName: newCaseBioParentName || undefined,
+          fosterParentName: newCaseFosterParentName || undefined,
+          priority: newCasePriority,
+          status: newCaseStatus,
+          summary: newCaseSummary || undefined,
+          organizationId: newCaseOrganizationId || undefined,
+        },
+      });
+
+      setNewCaseTitle("");
+      setNewCaseChildFirstName("");
+      setNewCaseChildLastName("");
+      setNewCaseBioParentName("");
+      setNewCaseFosterParentName("");
+      setNewCasePriority("normal");
+      setNewCaseStatus("open");
+      setNewCaseSummary("");
+      const followUps = [refreshCases()];
+      if (user?.role === "admin" || user?.role === "case_worker" || user?.role === "dev_admin") followUps.push(loadManagerData());
+      if (user?.role === "dev_admin") followUps.push(loadDevelopmentData());
+      await Promise.all(followUps);
+      setTab("cases");
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
   async function loadAllCalendarEvents() {
     if (!cases.length) return;
     setLoading(true); setError("");
@@ -610,6 +657,38 @@ export default function App() {
               </div>
               <div className="muted">Assign users to organizations and set their organization-level role.</div>
 
+              <div className="item">
+                <h3>Create Case (Platform)</h3>
+                <div className="row">
+                  <select value={newCaseOrganizationId} onChange={(e) => setNewCaseOrganizationId(e.target.value)}>
+                    <option value="">Select organization…</option>
+                    {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+                  </select>
+                  <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
+                  <button onClick={createCase}>Create Case</button>
+                </div>
+                <div className="row">
+                  <input value={newCaseChildFirstName} onChange={(e) => setNewCaseChildFirstName(e.target.value)} placeholder="Child first name" />
+                  <input value={newCaseChildLastName} onChange={(e) => setNewCaseChildLastName(e.target.value)} placeholder="Child last name" />
+                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                  <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                </div>
+                <div className="row">
+                  <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
+                    <option value="low">low</option>
+                    <option value="normal">normal</option>
+                    <option value="high">high</option>
+                    <option value="urgent">urgent</option>
+                  </select>
+                  <select value={newCaseStatus} onChange={(e) => setNewCaseStatus(e.target.value)}>
+                    <option value="open">open</option>
+                    <option value="active">active</option>
+                    <option value="closed">closed</option>
+                  </select>
+                </div>
+                <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
+              </div>
+
               <div className="row">
                 <label className="muted">Organization Role</label>
                 <select value={orgAssignRole} onChange={(e) => setOrgAssignRole(e.target.value)}>
@@ -705,6 +784,35 @@ export default function App() {
                 <button className="secondary" onClick={loadManagerData}>Refresh Console</button>
               </div>
               <div className="muted">Assign or reassign case workers across all cases.</div>
+
+              <div className="item">
+                <h3>Create Case</h3>
+                <div className="row">
+                  <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
+                  <input value={newCaseChildFirstName} onChange={(e) => setNewCaseChildFirstName(e.target.value)} placeholder="Child first name" />
+                  <input value={newCaseChildLastName} onChange={(e) => setNewCaseChildLastName(e.target.value)} placeholder="Child last name" />
+                </div>
+                <div className="row">
+                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                  <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                </div>
+                <div className="row">
+                  <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
+                    <option value="low">low</option>
+                    <option value="normal">normal</option>
+                    <option value="high">high</option>
+                    <option value="urgent">urgent</option>
+                  </select>
+                  <select value={newCaseStatus} onChange={(e) => setNewCaseStatus(e.target.value)}>
+                    <option value="open">open</option>
+                    <option value="active">active</option>
+                    <option value="closed">closed</option>
+                  </select>
+                  <button onClick={createCase}>Create Case</button>
+                </div>
+                <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
+              </div>
+
               <div className="cases-grid">
                 {managerCases.map((mc) => (
                   <div key={mc.id} className="item case-card">

@@ -300,6 +300,15 @@ function canBypassCustomerScope(req) {
   return req.auth?.role === "dev_admin";
 }
 
+function hasOrganizationRole(req, ...roles) {
+  const memberships = req.auth?.customerMemberships || [];
+  return memberships.some((m) => roles.includes(m.membership_role));
+}
+
+function defaultOrganizationId(req) {
+  return req.auth?.customerMemberships?.[0]?.customer_id || null;
+}
+
 function hasCustomerScope(req) {
   return canBypassCustomerScope(req) || (req.auth?.customerIds?.length || 0) > 0;
 }
@@ -320,7 +329,9 @@ app.get("/cases", async (req, res) => {
   if (!hasCustomerScope(req)) return res.json({ cases: [] });
 
   const caseRows = await query(
-    `SELECT c.id, c.title, c.created_at, c.created_by
+    `SELECT c.id, c.title, c.created_at, c.created_by,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.priority, c.status, c.summary
      FROM cases c
      INNER JOIN case_members cm ON cm.case_id = c.id
      WHERE cm.user_id = $1
@@ -329,7 +340,19 @@ app.get("/cases", async (req, res) => {
     [req.auth.userId, canBypassCustomerScope(req), req.auth.customerIds || []]
   );
 
-  const cases = caseRows.rows.map((r) => ({ id: r.id, title: r.title, createdAt: r.created_at, createdBy: r.created_by }));
+  const cases = caseRows.rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    createdAt: r.created_at,
+    createdBy: r.created_by,
+    childFirstName: r.child_first_name,
+    childLastName: r.child_last_name,
+    biologicalParentName: r.biological_parent_name,
+    fosterParentName: r.foster_parent_name,
+    priority: r.priority,
+    status: r.status,
+    summary: r.summary,
+  }));
   await req.audit({ action: "case.list", resourceType: "case", resourceId: "*", meta: { total: cases.length } });
   res.json({ cases });
 });
@@ -695,36 +718,87 @@ app.post("/management/cases/:caseId/assign", requireRole("admin", "case_worker",
   return res.status(201).json({ assigned: true, caseId, caseWorkerUserId, caseWorkerName: worker.full_name });
 });
 
-app.post("/cases", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
-  const { title, customerId } = req.body || {};
+app.post("/cases", async (req, res) => {
+  const canCreateByGlobalRole = ["admin", "case_worker", "dev_admin"].includes(req.auth.role);
+  const canCreateByOrgRole = hasOrganizationRole(req, "agency_admin", "manager");
+
+  if (!canCreateByGlobalRole && !canCreateByOrgRole) {
+    return res.status(403).json({ error: "Not allowed to create cases" });
+  }
+
+  const {
+    title,
+    customerId,
+    organizationId,
+    childFirstName,
+    childLastName,
+    biologicalParentName,
+    fosterParentName,
+    priority,
+    status,
+    summary,
+  } = req.body || {};
+
   if (!title || !title.trim()) return res.status(400).json({ error: "title is required" });
 
-  const effectiveCustomerId = canBypassCustomerScope(req)
-    ? (customerId || req.auth.customerIds?.[0] || null)
-    : (req.auth.customerIds?.[0] || null);
+  const requestedOrgId = organizationId || customerId || null;
+  const safePriority = ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal";
+  const safeStatus = ["open", "active", "closed"].includes(status) ? status : "open";
+
+  let effectiveCustomerId = null;
+
+  if (canBypassCustomerScope(req)) {
+    effectiveCustomerId = requestedOrgId || defaultOrganizationId(req) || null;
+  } else if (canCreateByOrgRole) {
+    // For agency admins/managers, default to their own organization scope.
+    effectiveCustomerId = defaultOrganizationId(req);
+  } else {
+    effectiveCustomerId = defaultOrganizationId(req);
+  }
 
   if (!effectiveCustomerId) {
-    return res.status(400).json({ error: "No customer scope available for this user" });
+    return res.status(400).json({ error: "No organization scope available for this user" });
   }
 
   if (!inCustomerScope(req, effectiveCustomerId)) {
-    return res.status(403).json({ error: "Customer scope violation" });
+    return res.status(403).json({ error: "Organization scope violation" });
   }
 
   const createResult = await query(
-    `INSERT INTO cases(id, title, created_by, customer_id)
-     VALUES ($1,$2,$3,$4)
-     RETURNING id, title, created_at, created_by`,
-    [randomUUID(), title.trim(), req.auth.userId, effectiveCustomerId]
+    `INSERT INTO cases(
+       id, title, created_by, customer_id,
+       child_first_name, child_last_name, biological_parent_name, foster_parent_name,
+       priority, status, summary
+     )
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     RETURNING id, title, created_at, created_by, customer_id,
+               child_first_name, child_last_name, biological_parent_name, foster_parent_name,
+               priority, status, summary`,
+    [
+      randomUUID(),
+      title.trim(),
+      req.auth.userId,
+      effectiveCustomerId,
+      childFirstName || null,
+      childLastName || null,
+      biologicalParentName || null,
+      fosterParentName || null,
+      safePriority,
+      safeStatus,
+      summary || null,
+    ]
   );
 
   const record = createResult.rows[0];
+  const creatorCaseRole = req.auth.role === "foster_parent" || req.auth.role === "biological_parent" || req.auth.role === "gal"
+    ? req.auth.role
+    : "case_worker";
 
   await query(
     `INSERT INTO case_members(id, case_id, user_id, role)
      VALUES ($1,$2,$3,$4)
      ON CONFLICT(case_id,user_id) DO UPDATE SET role = EXCLUDED.role`,
-    [randomUUID(), record.id, req.auth.userId, req.auth.role]
+    [randomUUID(), record.id, req.auth.userId, creatorCaseRole]
   );
 
   await req.audit({
@@ -732,11 +806,29 @@ app.post("/cases", requireRole("admin", "case_worker", "dev_admin"), async (req,
     action: "case.create",
     resourceType: "case",
     resourceId: record.id,
-    meta: { title: record.title },
+    meta: {
+      title: record.title,
+      organizationId: record.customer_id,
+      priority: record.priority,
+      status: record.status,
+    },
   });
 
   return res.status(201).json({
-    case: { id: record.id, title: record.title, createdAt: record.created_at, createdBy: record.created_by },
+    case: {
+      id: record.id,
+      title: record.title,
+      createdAt: record.created_at,
+      createdBy: record.created_by,
+      organizationId: record.customer_id,
+      childFirstName: record.child_first_name,
+      childLastName: record.child_last_name,
+      biologicalParentName: record.biological_parent_name,
+      fosterParentName: record.foster_parent_name,
+      priority: record.priority,
+      status: record.status,
+      summary: record.summary,
+    },
   });
 });
 

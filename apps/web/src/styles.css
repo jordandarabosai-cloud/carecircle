@@ -73,8 +73,9 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .between { justify-content: space-between; }
 
-button, input, select { border-radius: 10px; border: 1px solid #bae6fd; padding: 10px 12px; font: inherit; }
+button, input, select, textarea { border-radius: 10px; border: 1px solid #bae6fd; padding: 10px 12px; font: inherit; }
 button { background: linear-gradient(90deg, var(--cc-primary), var(--cc-secondary)); color: #fff; border: none; cursor: pointer; }
+textarea { width: 100%; background: #fff; min-height: 72px; resize: vertical; }
 button.secondary { background: var(--cc-primary-soft); color: #0e7490; border: 1px solid #a5f3fc; }
 button.tab { width: 100%; text-align: left; background: rgba(255,255,255,.06); color: #ecfeff; border: 1px solid rgba(255,255,255,.2); }
 button.tab.active { background: linear-gradient(90deg, #22d3ee, #34d399); color: #073b42; border-color: transparent; font-weight: 700; }
