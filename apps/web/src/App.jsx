@@ -47,6 +47,16 @@ const DOC_CATEGORY_META = {
   general: { label: "General", icon: "📄" },
 };
 
+const ROLE_LABELS = {
+  admin: "Admin",
+  case_worker: "Case Worker",
+  foster_parent: "Foster Parent",
+  biological_parent: "Biological Parent",
+  gal: "GAL / CASA",
+};
+
+const roleLabel = (role) => ROLE_LABELS[role] || role;
+
 export default function App() {
   const [apiBase, setApiBase] = useState(() => localStorage.getItem("cc_api_base") || defaultApiBase);
   const [email, setEmail] = useState("worker@carecircle.dev");
@@ -397,7 +407,7 @@ export default function App() {
         </div>
         <div className="user-block">
           <div className="user-name">{user?.fullName}</div>
-          <div className="muted">{user?.role}</div>
+          <div className="muted">{roleLabel(user?.role)}</div>
         </div>
 
         <div className="sidebar-section">
@@ -522,11 +532,11 @@ export default function App() {
                         </div>
                         <div className="row">
                           <select value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)}>
-                            <option value="admin">admin</option>
-                            <option value="case_worker">case_worker</option>
-                            <option value="gal">gal</option>
-                            <option value="foster_parent">foster_parent</option>
-                            <option value="biological_parent">biological_parent</option>
+                            <option value="admin">{roleLabel("admin")}</option>
+                            <option value="case_worker">{roleLabel("case_worker")}</option>
+                            <option value="gal">{roleLabel("gal")}</option>
+                            <option value="foster_parent">{roleLabel("foster_parent")}</option>
+                            <option value="biological_parent">{roleLabel("biological_parent")}</option>
                           </select>
                         </div>
                       </div>
@@ -675,10 +685,10 @@ export default function App() {
               <div className="row">
                 <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="invite email" />
                 <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
-                  <option value="biological_parent">biological_parent</option>
-                  <option value="foster_parent">foster_parent</option>
-                  <option value="case_worker">case_worker</option>
-                  <option value="gal">gal</option>
+                  <option value="biological_parent">{roleLabel("biological_parent")}</option>
+                  <option value="foster_parent">{roleLabel("foster_parent")}</option>
+                  <option value="case_worker">{roleLabel("case_worker")}</option>
+                  <option value="gal">{roleLabel("gal")}</option>
                 </select>
                 <button onClick={createInvite}>Invite</button>
               </div>
