@@ -292,6 +292,15 @@ export default function App() {
           <div className="user-name">{user?.fullName}</div>
           <div className="muted">{user?.role}</div>
         </div>
+
+        <div className="sidebar-section">
+          <label className="sidebar-label">Current Case</label>
+          <select value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+            {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+          <button className="secondary" onClick={() => refreshCases()}>Refresh Cases</button>
+        </div>
+
         <div className="tab-list">
           {tabs.map(([k, label]) => (
             <button key={k} className={tab === k ? "tab active" : "tab"} onClick={() => setTab(k)}>{label}</button>
@@ -301,19 +310,6 @@ export default function App() {
       </aside>
 
       <main className="main">
-        <header className="topbar card">
-          <div>
-            <h1>{selectedCase?.title || "Select a case"}</h1>
-            <p className="muted">Dashboard for timeline, tasks, messages, documents, and invites.</p>
-          </div>
-          <div className="row">
-            <select value={caseId} onChange={(e) => setCaseId(e.target.value)}>
-              {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-            <button onClick={() => refreshCases()}>Refresh</button>
-          </div>
-        </header>
-
         <section className="case-context card">
           <div className="case-pill-label">Current Case</div>
           <div className="case-pill-main">{selectedCase?.title || "No case selected"}</div>
