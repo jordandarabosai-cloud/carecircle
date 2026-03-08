@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "pack:mac": "electron-builder --mac --publish never"
+    "pack:mac": "electron-builder --mac --publish never",
+    "check:mac": "node ./scripts/check-macos-config.js"
   },
   "devDependencies": {
     "electron": "^37.2.0",
@@ -24,7 +25,12 @@
     ],
     "mac": {
       "target": ["dmg"],
-      "category": "public.app-category.medical"
-    }
+      "category": "public.app-category.medical",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "afterSign": "./scripts/notarize.js"
   }
 }
