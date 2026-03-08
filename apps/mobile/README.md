@@ -2,11 +2,12 @@
 
 CareCircle mobile client MVP with API-backed flows:
 - OTP login (`/auth/request-code`, `/auth/verify-code`)
-- Case loading
+- Case selection + refresh
 - Timeline list + quick post
-- Tasks list + quick create
+- Tasks list + quick create + in-app status updates
 - Messages list + quick send
 - Documents list
+- Invite list + invite creation
 
 ## Run
 From repo root:
