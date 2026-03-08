@@ -9,8 +9,9 @@ Shared case coordination platform for foster parents, biological parents, case w
 - Preserve accountability with audit trails
 
 ## Monorepo Layout
-- `apps/mobile` - iOS/Android app shell (Expo scaffold)
-- `apps/desktop` - desktop app shell (Electron scaffold)
+- `apps/mobile` - iOS/Android app (Expo MVP)
+- `apps/desktop` - desktop app (Electron MVP)
+- `apps/web` - web app (Vite + React MVP)
 - `services/api` - backend API and auth/permissions scaffold
 - `packages` - shared types/ui/utils
 - `docs` - product and technical documentation

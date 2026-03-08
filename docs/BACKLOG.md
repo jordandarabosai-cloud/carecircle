@@ -21,4 +21,5 @@
 8. ✅ Native desktop packaging validation scaffolding on macOS (check script, entitlements, notarization hook, release checklist)
 9. ✅ Added GitHub Actions macOS desktop build workflow + CI docs
 10. ✅ Added GitHub secrets setup guide (`docs/GITHUB_SECRETS_SETUP.md`) for first signed run
-11. Next: execute first signed/notarized GitHub Actions run and verify installed artifact on clean macOS
+11. ✅ Web app MVP client wired (OTP auth + case workspace tabs)
+12. Next: execute first signed/notarized GitHub Actions run and verify installed artifact on clean macOS
