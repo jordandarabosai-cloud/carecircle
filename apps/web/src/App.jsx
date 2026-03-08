@@ -149,6 +149,15 @@ export default function App() {
   }, [cases, caseSearch]);
   const doneTasks = useMemo(() => tasks.filter((t) => t.status === "done").length, [tasks]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
+  const devCasesSorted = useMemo(() => {
+    return [...devCases].sort((a, b) => {
+      const aUnassigned = !a.primaryCaseWorkerId;
+      const bUnassigned = !b.primaryCaseWorkerId;
+      if (aUnassigned && !bUnassigned) return -1;
+      if (!aUnassigned && bUnassigned) return 1;
+      return (a.title || "").localeCompare(b.title || "");
+    });
+  }, [devCases]);
 
   const currentCaseCalendarEvents = useMemo(() => {
     const out = [];
@@ -749,30 +758,46 @@ export default function App() {
               ) : null}
 
               <h3>All Cases (Platform)</h3>
-              <div className="cases-grid">
-                {devCases.map((c) => (
-                  <div key={c.id} className="item case-card">
-                    <div>
-                      <div className="case-title">{c.title}</div>
-                      <div className="muted">Org: {c.organizationName || "Unassigned"}</div>
-                      <div className="muted">Primary worker: {c.primaryCaseWorkerName || "Unassigned"}</div>
-                    </div>
-                    <div className="row">
-                      <select defaultValue="" onChange={(e) => assignCaseToOrganization(c.id, e.target.value)}>
-                        <option value="" disabled>Assign organization…</option>
-                        {devCustomers.map((org) => (
-                          <option key={org.id} value={org.id}>{org.name}</option>
-                        ))}
-                      </select>
-                      <select defaultValue="" onChange={(e) => assignCaseToUser(c.id, e.target.value, caseAssignRole)}>
-                        <option value="" disabled>Assign user…</option>
-                        {managerUsers.map((u) => (
-                          <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                ))}
+              <div className="item table-wrap">
+                <table className="cases-table">
+                  <thead>
+                    <tr>
+                      <th>Case</th>
+                      <th>Organization</th>
+                      <th>Primary Worker</th>
+                      <th>Assign Organization</th>
+                      <th>Assign User</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {devCasesSorted.map((c) => (
+                      <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
+                        <td>
+                          <div className="case-title">{c.title}</div>
+                          <div className="muted">{c.id}</div>
+                        </td>
+                        <td>{c.organizationName || "Unassigned"}</td>
+                        <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
+                        <td>
+                          <select defaultValue="" onChange={(e) => assignCaseToOrganization(c.id, e.target.value)}>
+                            <option value="" disabled>Assign…</option>
+                            {devCustomers.map((org) => (
+                              <option key={org.id} value={org.id}>{org.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <select defaultValue="" onChange={(e) => assignCaseToUser(c.id, e.target.value, caseAssignRole)}>
+                            <option value="" disabled>Assign…</option>
+                            {managerUsers.map((u) => (
+                              <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

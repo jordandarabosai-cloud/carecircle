@@ -70,6 +70,14 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .member-row:last-child { border-bottom: none; }
 .task-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 
+.table-wrap { overflow-x: auto; }
+.cases-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cases-table th,
+.cases-table td { text-align: left; border-bottom: 1px solid #dbeafe; padding: 10px 8px; vertical-align: top; }
+.cases-table th { color: #0e7490; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.cases-table tr.row-unassigned { background: #fffbeb; }
+.cases-table tr.row-unassigned td { border-bottom-color: #fde68a; }
+
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .between { justify-content: space-between; }
 
