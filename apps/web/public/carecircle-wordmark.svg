@@ -1,16 +1,22 @@
-<svg width="920" height="220" viewBox="0 0 920 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="960" height="230" viewBox="0 0 960 230" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="12" y1="12" x2="208" y2="208" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2563EB"/>
-      <stop offset="1" stop-color="#0EA5E9"/>
+    <linearGradient id="bg" x1="10" y1="10" x2="215" y2="215" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22C55E"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="heart" x1="78" y1="80" x2="142" y2="149" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#FDBA74"/>
     </linearGradient>
   </defs>
 
-  <rect x="12" y="12" width="196" height="196" rx="54" fill="url(#bg)"/>
-  <circle cx="110" cy="110" r="56" stroke="#F8FAFC" stroke-width="14"/>
-  <circle cx="110" cy="110" r="31" fill="#F8FAFC"/>
-  <path d="M89 111C89 99.402 98.402 90 110 90C121.598 90 131 99.402 131 111" stroke="#1D4ED8" stroke-width="9" stroke-linecap="round"/>
+  <rect x="10" y="10" width="210" height="210" rx="58" fill="url(#bg)"/>
+  <circle cx="115" cy="115" r="58" stroke="#ECFEFF" stroke-width="12"/>
+  <circle cx="93" cy="98" r="10" fill="#ECFEFF"/>
+  <circle cx="137" cy="98" r="10" fill="#ECFEFF"/>
+  <path d="M78 137C84 121 97 111 115 111C133 111 146 121 152 137" stroke="#ECFEFF" stroke-width="8" stroke-linecap="round"/>
+  <path d="M115 150C111 145 98 137 98 126C98 118 104 112 112 112C116 112 120 114 123 118C126 114 130 112 134 112C142 112 148 118 148 126C148 137 119 152 115 150Z" fill="url(#heart)"/>
 
-  <text x="246" y="128" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="84" font-weight="700" fill="#0F172A">CareCircle</text>
-  <text x="248" y="168" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="500" fill="#475569">Care coordination, clearly connected.</text>
+  <text x="250" y="126" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="80" font-weight="700" fill="#0F172A">CareCircle</text>
+  <text x="252" y="166" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="500" fill="#475569">Supporting families together, one circle at a time.</text>
 </svg>
