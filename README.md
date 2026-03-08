@@ -34,6 +34,31 @@ On startup, API automatically:
 
 Server starts at `http://localhost:4010`.
 
+### Windows local Postgres (manual)
+If Postgres is not installed, one easy path is:
+
+```powershell
+winget install -e --id PostgreSQL.PostgreSQL.16
+```
+
+Then create the DB (in psql):
+
+```sql
+CREATE DATABASE carecircle;
+```
+
+### Smoke test script
+After Postgres is running:
+
+```powershell
+./scripts/smoke-test.ps1
+```
+
+Expected output includes:
+- `HEALTH_OK=True`
+- `CASES_COUNT=...`
+- `TIMELINE_COUNT=...`
+
 ### Seed login accounts
 Use `POST /auth/login` with one of:
 - `admin@carecircle.dev`
