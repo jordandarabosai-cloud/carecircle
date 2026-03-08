@@ -113,9 +113,11 @@ export default function App() {
   const [managerWorkers, setManagerWorkers] = useState([]);
   const [managerUsers, setManagerUsers] = useState([]);
   const [devCustomers, setDevCustomers] = useState([]);
+  const [devCases, setDevCases] = useState([]);
   const [devSelectedOrgId, setDevSelectedOrgId] = useState("");
   const [devOrgUsers, setDevOrgUsers] = useState([]);
   const [orgAssignRole, setOrgAssignRole] = useState("member");
+  const [caseAssignRole, setCaseAssignRole] = useState("case_worker");
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const tabs = useMemo(() => {
@@ -340,13 +342,15 @@ export default function App() {
   async function loadDevelopmentData() {
     setLoading(true); setError("");
     try {
-      const [organizations, users] = await Promise.all([
+      const [organizations, users, allCases] = await Promise.all([
         apiRequest({ baseUrl: apiBase, path: "/development/organizations", token }),
         apiRequest({ baseUrl: apiBase, path: "/management/users", token }),
+        apiRequest({ baseUrl: apiBase, path: "/development/cases", token }),
       ]);
       const orgs = organizations.organizations || [];
       setDevCustomers(orgs);
       setManagerUsers(users.users || []);
+      setDevCases(allCases.cases || []);
       if (!devSelectedOrgId && orgs.length) setDevSelectedOrgId(orgs[0].id);
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
@@ -367,6 +371,36 @@ export default function App() {
         const out = await apiRequest({ baseUrl: apiBase, path: `/development/organizations/${devSelectedOrgId}/users`, token });
         setDevOrgUsers(out.users || []);
       }
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function assignCaseToOrganization(caseId, organizationId) {
+    if (!caseId || !organizationId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/development/cases/${caseId}/assign-organization`,
+        method: "POST",
+        token,
+        body: { organizationId },
+      });
+      await loadDevelopmentData();
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function assignCaseToUser(caseId, userId, role = "case_worker") {
+    if (!caseId || !userId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/development/cases/${caseId}/assign-user`,
+        method: "POST",
+        token,
+        body: { userId, caseRole: role },
+      });
+      await loadDevelopmentData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -587,6 +621,14 @@ export default function App() {
                   <option value="gal">GAL / CASA</option>
                   <option value="member">Member</option>
                 </select>
+
+                <label className="muted">Case Role</label>
+                <select value={caseAssignRole} onChange={(e) => setCaseAssignRole(e.target.value)}>
+                  <option value="case_worker">Case Worker</option>
+                  <option value="foster_parent">Foster Parent</option>
+                  <option value="biological_parent">Biological Parent</option>
+                  <option value="gal">GAL / CASA</option>
+                </select>
               </div>
 
               <div className="cases-grid">
@@ -626,6 +668,33 @@ export default function App() {
                   </div>
                 </>
               ) : null}
+
+              <h3>All Cases (Platform)</h3>
+              <div className="cases-grid">
+                {devCases.map((c) => (
+                  <div key={c.id} className="item case-card">
+                    <div>
+                      <div className="case-title">{c.title}</div>
+                      <div className="muted">Org: {c.organizationName || "Unassigned"}</div>
+                      <div className="muted">Primary worker: {c.primaryCaseWorkerName || "Unassigned"}</div>
+                    </div>
+                    <div className="row">
+                      <select defaultValue="" onChange={(e) => assignCaseToOrganization(c.id, e.target.value)}>
+                        <option value="" disabled>Assign organization…</option>
+                        {devCustomers.map((org) => (
+                          <option key={org.id} value={org.id}>{org.name}</option>
+                        ))}
+                      </select>
+                      <select defaultValue="" onChange={(e) => assignCaseToUser(c.id, e.target.value, caseAssignRole)}>
+                        <option value="" disabled>Assign user…</option>
+                        {managerUsers.map((u) => (
+                          <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

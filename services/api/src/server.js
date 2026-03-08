@@ -566,6 +566,101 @@ app.post("/development/organizations/:customerId/users/assign", requireRole("dev
   });
 });
 
+app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
+  const result = await query(
+    `SELECT c.id, c.title, c.created_at, c.created_by, c.customer_id,
+            cust.name AS organization_name,
+            u.id AS primary_case_worker_id,
+            u.full_name AS primary_case_worker_name
+     FROM cases c
+     LEFT JOIN customers cust ON cust.id = c.customer_id
+     LEFT JOIN LATERAL (
+       SELECT cm.user_id
+       FROM case_members cm
+       WHERE cm.case_id = c.id AND cm.role = 'case_worker'
+       ORDER BY cm.added_at ASC
+       LIMIT 1
+     ) cw ON true
+     LEFT JOIN users u ON u.id = cw.user_id
+     ORDER BY c.created_at DESC`
+  );
+
+  const cases = result.rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    createdAt: r.created_at,
+    createdBy: r.created_by,
+    organizationId: r.customer_id,
+    organizationName: r.organization_name,
+    primaryCaseWorkerId: r.primary_case_worker_id,
+    primaryCaseWorkerName: r.primary_case_worker_name,
+  }));
+
+  return res.json({ cases });
+});
+
+app.post("/development/cases/:caseId/assign-organization", requireRole("dev_admin"), async (req, res) => {
+  const { caseId } = req.params;
+  const { organizationId } = req.body || {};
+  if (!organizationId) return res.status(400).json({ error: "organizationId is required" });
+
+  const org = await query("SELECT id, name FROM customers WHERE id = $1 LIMIT 1", [organizationId]);
+  if (!org.rowCount) return res.status(404).json({ error: "Organization not found" });
+
+  const updated = await query(
+    `UPDATE cases SET customer_id = $2 WHERE id = $1 RETURNING id, title, customer_id`,
+    [caseId, organizationId]
+  );
+  if (!updated.rowCount) return res.status(404).json({ error: "Case not found" });
+
+  return res.json({
+    assigned: true,
+    caseId,
+    organizationId,
+    organizationName: org.rows[0].name,
+  });
+});
+
+app.post("/development/cases/:caseId/assign-user", requireRole("dev_admin"), async (req, res) => {
+  const { caseId } = req.params;
+  const { userId, caseRole } = req.body || {};
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+
+  const allowedCaseRoles = new Set(["case_worker", "foster_parent", "biological_parent", "gal"]);
+  const safeRole = allowedCaseRoles.has(caseRole) ? caseRole : "case_worker";
+
+  const user = await query("SELECT id, full_name FROM users WHERE id = $1 LIMIT 1", [userId]);
+  if (!user.rowCount) return res.status(404).json({ error: "User not found" });
+
+  const caseRow = await query("SELECT id, customer_id FROM cases WHERE id = $1 LIMIT 1", [caseId]);
+  if (!caseRow.rowCount) return res.status(404).json({ error: "Case not found" });
+
+  const organizationId = caseRow.rows[0].customer_id;
+  if (organizationId) {
+    await query(
+      `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
+      [randomUUID(), organizationId, userId, safeRole]
+    );
+  }
+
+  await query(
+    `INSERT INTO case_members(id, case_id, user_id, role)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT(case_id,user_id) DO UPDATE SET role = EXCLUDED.role`,
+    [randomUUID(), caseId, userId, safeRole]
+  );
+
+  return res.status(201).json({
+    assigned: true,
+    caseId,
+    userId,
+    caseRole: safeRole,
+    userName: user.rows[0].full_name,
+  });
+});
+
 app.post("/management/cases/:caseId/assign", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
   const { caseId } = req.params;
   const { caseWorkerUserId } = req.body || {};
