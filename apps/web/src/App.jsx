@@ -58,9 +58,19 @@ const ROLE_LABELS = {
 
 const roleLabel = (role) => ROLE_LABELS[role] || role;
 
+const TEST_ACCOUNTS = [
+  { label: "Development Admin", email: "devadmin@carecircle.dev" },
+  { label: "Admin", email: "admin@carecircle.dev" },
+  { label: "Case Worker", email: "worker@carecircle.dev" },
+  { label: "Foster Parent", email: "foster@carecircle.dev" },
+  { label: "Biological Parent", email: "bio@carecircle.dev" },
+  { label: "GAL / CASA", email: "gal@carecircle.dev" },
+];
+
 export default function App() {
   const [apiBase, setApiBase] = useState(() => localStorage.getItem("cc_api_base") || defaultApiBase);
   const [email, setEmail] = useState("worker@carecircle.dev");
+  const [testAccountEmail, setTestAccountEmail] = useState("worker@carecircle.dev");
   const [code, setCode] = useState("");
   const [token, setToken] = useState(() => localStorage.getItem("cc_token") || "");
   const [user, setUser] = useState(() => {
@@ -416,8 +426,21 @@ export default function App() {
             <h1>CareCircle</h1>
           </div>
           <p className="muted">Secure case coordination for families and care teams.</p>
+          <label>Testing account</label>
+          <select
+            value={testAccountEmail}
+            onChange={(e) => {
+              setTestAccountEmail(e.target.value);
+              setEmail(e.target.value);
+            }}
+          >
+            {TEST_ACCOUNTS.map((a) => (
+              <option key={a.email} value={a.email}>{a.label} — {a.email}</option>
+            ))}
+          </select>
+
           <label>Email</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          <input value={email} onChange={(e) => { setEmail(e.target.value); setTestAccountEmail(e.target.value); }} placeholder="you@example.com" />
           <button onClick={requestCode}>Request code</button>
           <label>One-time code</label>
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" />
