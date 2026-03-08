@@ -1,0 +1,14 @@
+{
+  "name": "carecircle",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm --workspace @carecircle/api run dev",
+    "build:api": "npm --workspace @carecircle/api run build"
+  }
+}
