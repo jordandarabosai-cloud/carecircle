@@ -67,6 +67,21 @@ export interface CaseDocument {
   createdAt: string;
 }
 
+export type TaskStatus = "open" | "in_progress" | "done" | "blocked";
+
+export interface CaseTask {
+  id: string;
+  caseId: string;
+  title: string;
+  description?: string | null;
+  ownerUserId?: string | null;
+  dueAt?: string | null;
+  status: TaskStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuditEvent {
   id: string;
   actorUserId: string;

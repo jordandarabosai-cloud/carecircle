@@ -107,6 +107,9 @@ Auth hardening added:
 - `POST /cases/:caseId/members` (admin/case_worker)
 - `GET /cases/:caseId/invites` (admin/case_worker/gal)
 - `POST /cases/:caseId/invites` (admin/case_worker)
+- `GET /cases/:caseId/tasks`
+- `POST /cases/:caseId/tasks`
+- `PATCH /cases/:caseId/tasks/:taskId`
 - `GET /cases/:caseId/messages`
 - `POST /cases/:caseId/messages`
 - `GET /cases/:caseId/documents`

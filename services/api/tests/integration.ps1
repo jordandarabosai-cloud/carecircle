@@ -56,6 +56,15 @@ try {
   $timeline = Invoke-RestMethod -Uri "$base/cases/$caseId/timeline" -Method Get -Headers $parentHeaders
   Assert-True ($timeline.events.Count -ge 1) "timeline should be visible"
 
+  $newTask = Invoke-RestMethod -Uri "$base/cases/$caseId/tasks" -Method Post -Headers $workerHeaders -ContentType "application/json" -Body (@{ title = "Complete weekly check-in"; description = "Share weekly update with case members" } | ConvertTo-Json)
+  Assert-True ($newTask.task.status -eq "open") "task should be open"
+
+  $updatedTask = Invoke-RestMethod -Uri "$base/cases/$caseId/tasks/$($newTask.task.id)" -Method Patch -Headers $workerHeaders -ContentType "application/json" -Body (@{ status = "in_progress" } | ConvertTo-Json)
+  Assert-True ($updatedTask.task.status -eq "in_progress") "task should update status"
+
+  $tasks = Invoke-RestMethod -Uri "$base/cases/$caseId/tasks" -Method Get -Headers $parentHeaders
+  Assert-True ($tasks.tasks.Count -ge 1) "tasks should be visible"
+
   $newMsg = Invoke-RestMethod -Uri "$base/cases/$caseId/messages" -Method Post -Headers $workerHeaders -ContentType "application/json" -Body (@{ body = "Quick coordination update" } | ConvertTo-Json)
   Assert-True (-not [string]::IsNullOrWhiteSpace($newMsg.message.id)) "message id should exist"
 

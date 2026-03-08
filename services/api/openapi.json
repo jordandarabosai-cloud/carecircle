@@ -137,6 +137,31 @@
         "responses": { "201": { "description": "Created" } }
       }
     },
+    "/cases/{caseId}/tasks": {
+      "get": {
+        "summary": "List case tasks",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "summary": "Create case task",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/cases/{caseId}/tasks/{taskId}": {
+      "patch": {
+        "summary": "Update case task",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
     "/cases/{caseId}/messages": {
       "get": {
         "summary": "List case messages",

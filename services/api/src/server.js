@@ -13,6 +13,7 @@ app.use(express.json());
 const TIMELINE_TYPES = new Set(["note", "hearing", "visit", "status", "task"]);
 const VALID_ROLES = new Set(["foster_parent", "biological_parent", "case_worker", "gal", "admin"]);
 const DOCUMENT_VISIBILITY = new Set(["all", "professionals_only", "parents_only"]);
+const TASK_STATUSES = new Set(["open", "in_progress", "done", "blocked"]);
 
 function canViewDocument(role, visibility) {
   if (role === "admin" || role === "case_worker") return true;
@@ -367,6 +368,159 @@ app.post("/cases/:caseId/invites", requireRole("admin", "case_worker"), async (r
       acceptedAt: invite.accepted_at,
       expiresAt: invite.expires_at,
       createdAt: invite.created_at,
+    },
+  });
+});
+
+app.get("/cases/:caseId/tasks", async (req, res) => {
+  const { caseId } = req.params;
+  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+    return res.status(403).json({ error: "Not allowed for this case" });
+  }
+
+  const result = await query(
+    `SELECT id, case_id, title, description, owner_user_id, due_at, status, created_by, created_at, updated_at
+     FROM case_tasks
+     WHERE case_id = $1
+     ORDER BY COALESCE(due_at, created_at) ASC`,
+    [caseId]
+  );
+
+  const tasks = result.rows.map((r) => ({
+    id: r.id,
+    caseId: r.case_id,
+    title: r.title,
+    description: r.description,
+    ownerUserId: r.owner_user_id,
+    dueAt: r.due_at,
+    status: r.status,
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+
+  await req.audit({ caseId, action: "task.list", resourceType: "case", resourceId: caseId, meta: { total: tasks.length } });
+  return res.json({ caseId, tasks });
+});
+
+app.post("/cases/:caseId/tasks", async (req, res) => {
+  const { caseId } = req.params;
+  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+    return res.status(403).json({ error: "Not allowed for this case" });
+  }
+
+  const { title, description, ownerUserId, dueAt } = req.body || {};
+  if (!title || !String(title).trim()) return res.status(400).json({ error: "title is required" });
+
+  if (ownerUserId) {
+    const ownerResult = await query(
+      "SELECT 1 FROM case_members WHERE case_id = $1 AND user_id = $2 LIMIT 1",
+      [caseId, ownerUserId]
+    );
+    if (!ownerResult.rowCount) {
+      return res.status(400).json({ error: "ownerUserId must be a case member" });
+    }
+  }
+
+  const inserted = await query(
+    `INSERT INTO case_tasks(id, case_id, title, description, owner_user_id, due_at, status, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,'open',$7)
+     RETURNING id, case_id, title, description, owner_user_id, due_at, status, created_by, created_at, updated_at`,
+    [
+      randomUUID(),
+      caseId,
+      String(title).trim(),
+      description ? String(description).trim() : null,
+      ownerUserId || null,
+      dueAt || null,
+      req.auth.userId,
+    ]
+  );
+
+  const t = inserted.rows[0];
+  await req.audit({ caseId, action: "task.create", resourceType: "case", resourceId: caseId, meta: { taskId: t.id } });
+
+  return res.status(201).json({
+    task: {
+      id: t.id,
+      caseId: t.case_id,
+      title: t.title,
+      description: t.description,
+      ownerUserId: t.owner_user_id,
+      dueAt: t.due_at,
+      status: t.status,
+      createdBy: t.created_by,
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
+    },
+  });
+});
+
+app.patch("/cases/:caseId/tasks/:taskId", async (req, res) => {
+  const { caseId, taskId } = req.params;
+  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+    return res.status(403).json({ error: "Not allowed for this case" });
+  }
+
+  const existingResult = await query(
+    `SELECT id, case_id FROM case_tasks WHERE id = $1 AND case_id = $2 LIMIT 1`,
+    [taskId, caseId]
+  );
+  if (!existingResult.rowCount) return res.status(404).json({ error: "Task not found" });
+
+  const { title, description, ownerUserId, dueAt, status } = req.body || {};
+
+  if (status && !TASK_STATUSES.has(status)) {
+    return res.status(400).json({ error: "status must be one of: open, in_progress, done, blocked" });
+  }
+
+  if (ownerUserId) {
+    const ownerResult = await query(
+      "SELECT 1 FROM case_members WHERE case_id = $1 AND user_id = $2 LIMIT 1",
+      [caseId, ownerUserId]
+    );
+    if (!ownerResult.rowCount) {
+      return res.status(400).json({ error: "ownerUserId must be a case member" });
+    }
+  }
+
+  const updated = await query(
+    `UPDATE case_tasks
+     SET
+       title = COALESCE($3, title),
+       description = COALESCE($4, description),
+       owner_user_id = COALESCE($5, owner_user_id),
+       due_at = COALESCE($6, due_at),
+       status = COALESCE($7, status),
+       updated_at = NOW()
+     WHERE id = $1 AND case_id = $2
+     RETURNING id, case_id, title, description, owner_user_id, due_at, status, created_by, created_at, updated_at`,
+    [
+      taskId,
+      caseId,
+      title ? String(title).trim() : null,
+      description ? String(description).trim() : null,
+      ownerUserId || null,
+      dueAt || null,
+      status || null,
+    ]
+  );
+
+  const t = updated.rows[0];
+  await req.audit({ caseId, action: "task.update", resourceType: "case", resourceId: caseId, meta: { taskId: t.id } });
+
+  return res.json({
+    task: {
+      id: t.id,
+      caseId: t.case_id,
+      title: t.title,
+      description: t.description,
+      ownerUserId: t.owner_user_id,
+      dueAt: t.due_at,
+      status: t.status,
+      createdBy: t.created_by,
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
     },
   });
 });

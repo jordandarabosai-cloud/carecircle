@@ -14,4 +14,6 @@
 1. ✅ Add real onboarding/invite flow (case invites + accept endpoint)
 2. ✅ Add automated integration tests + OpenAPI spec
 3. ✅ Add documents + messaging domains (DB + endpoints)
-4. ✅ Add OTP-style auth scaffold (`/auth/request-code`, `/auth/verify-code`) with rate limiting/lockout + delivery adapter (`dev`/`log`/`smtp`)
+4. ✅ Add tasks/expectations domain (DB + endpoints)
+5. ✅ Add OTP-style auth scaffold (`/auth/request-code`, `/auth/verify-code`) with rate limiting/lockout + delivery adapter (`dev`/`log`/`smtp`)
+6. Next: production delivery integration (email provider), file storage provider wiring, and role-specific UI flows
