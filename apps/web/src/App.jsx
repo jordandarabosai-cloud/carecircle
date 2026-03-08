@@ -113,6 +113,8 @@ export default function App() {
   const [managerWorkers, setManagerWorkers] = useState([]);
   const [managerUsers, setManagerUsers] = useState([]);
   const [devCustomers, setDevCustomers] = useState([]);
+  const [devSelectedOrgId, setDevSelectedOrgId] = useState("");
+  const [devOrgUsers, setDevOrgUsers] = useState([]);
   const [orgAssignRole, setOrgAssignRole] = useState("member");
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
@@ -234,6 +236,19 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, calendarScope, token, cases.length]);
 
+  useEffect(() => {
+    async function run() {
+      if (tab !== "development" || !token || !devSelectedOrgId) return;
+      try {
+        const out = await apiRequest({ baseUrl: apiBase, path: `/development/organizations/${devSelectedOrgId}/users`, token });
+        setDevOrgUsers(out.users || []);
+      } catch (e) {
+        setError(e.message);
+      }
+    }
+    run();
+  }, [tab, token, devSelectedOrgId, apiBase]);
+
   async function requestCode() {
     setLoading(true); setError("");
     try {
@@ -329,8 +344,10 @@ export default function App() {
         apiRequest({ baseUrl: apiBase, path: "/development/organizations", token }),
         apiRequest({ baseUrl: apiBase, path: "/management/users", token }),
       ]);
-      setDevCustomers(organizations.organizations || []);
+      const orgs = organizations.organizations || [];
+      setDevCustomers(orgs);
       setManagerUsers(users.users || []);
+      if (!devSelectedOrgId && orgs.length) setDevSelectedOrgId(orgs[0].id);
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -346,6 +363,10 @@ export default function App() {
         body: { userId, organizationRole },
       });
       await loadDevelopmentData();
+      if (devSelectedOrgId === customerId) {
+        const out = await apiRequest({ baseUrl: apiBase, path: `/development/organizations/${devSelectedOrgId}/users`, token });
+        setDevOrgUsers(out.users || []);
+      }
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -570,12 +591,13 @@ export default function App() {
 
               <div className="cases-grid">
                 {devCustomers.map((c) => (
-                  <div key={c.id} className="item case-card">
+                  <div key={c.id} className={`item case-card ${devSelectedOrgId === c.id ? "active" : ""}`}>
                     <div>
                       <div className="case-title">{c.name}</div>
                       <div className="muted">{c.userCount} users • {c.caseCount} cases</div>
                     </div>
                     <div className="row">
+                      <button className="secondary" onClick={() => setDevSelectedOrgId(c.id)}>View Members</button>
                       <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value, orgAssignRole)}>
                         <option value="" disabled>Assign user to organization…</option>
                         {managerUsers.map((u) => (
@@ -586,6 +608,24 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
+              {devSelectedOrgId ? (
+                <>
+                  <h3>Organization Members</h3>
+                  <div className="item">
+                    {devOrgUsers.length === 0 ? <div className="muted">No members in this organization yet.</div> : null}
+                    {devOrgUsers.map((u) => (
+                      <div key={u.id} className="member-row">
+                        <div>
+                          <div className="case-title">{u.fullName}</div>
+                          <div className="muted">{u.email}</div>
+                        </div>
+                        <div className="muted">{roleLabel(u.globalRole)} • Org: {u.organizationRole}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
           )}
 

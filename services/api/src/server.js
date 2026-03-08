@@ -511,6 +511,32 @@ app.get("/development/organizations", requireRole("dev_admin"), async (_req, res
   return res.json({ organizations });
 });
 
+app.get("/development/organizations/:customerId/users", requireRole("dev_admin"), async (req, res) => {
+  const { customerId } = req.params;
+
+  const customer = await query("SELECT id, name FROM customers WHERE id = $1 LIMIT 1", [customerId]);
+  if (!customer.rowCount) return res.status(404).json({ error: "Organization not found" });
+
+  const result = await query(
+    `SELECT u.id, u.email, u.full_name, u.role AS global_role, cu.membership_role AS organization_role
+     FROM customer_users cu
+     INNER JOIN users u ON u.id = cu.user_id
+     WHERE cu.customer_id = $1
+     ORDER BY u.full_name ASC`,
+    [customerId]
+  );
+
+  const users = result.rows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    fullName: r.full_name,
+    globalRole: r.global_role,
+    organizationRole: r.organization_role,
+  }));
+
+  return res.json({ organization: { id: customer.rows[0].id, name: customer.rows[0].name }, users });
+});
+
 app.post("/development/organizations/:customerId/users/assign", requireRole("dev_admin"), async (req, res) => {
   const { customerId } = req.params;
   const { userId, organizationRole } = req.body || {};
