@@ -11,6 +11,15 @@ app.use(express.json());
 
 const TIMELINE_TYPES = new Set(["note", "hearing", "visit", "status", "task"]);
 const VALID_ROLES = new Set(["foster_parent", "biological_parent", "case_worker", "gal", "admin"]);
+const DOCUMENT_VISIBILITY = new Set(["all", "professionals_only", "parents_only"]);
+
+function canViewDocument(role, visibility) {
+  if (role === "admin" || role === "case_worker") return true;
+  if (visibility === "all") return true;
+  if (visibility === "professionals_only") return role === "gal";
+  if (visibility === "parents_only") return role === "foster_parent" || role === "biological_parent";
+  return false;
+}
 
 app.get("/health", async (_req, res) => {
   await query("SELECT 1");
@@ -267,6 +276,120 @@ app.post("/cases/:caseId/invites", requireRole("admin", "case_worker"), async (r
       acceptedAt: invite.accepted_at,
       expiresAt: invite.expires_at,
       createdAt: invite.created_at,
+    },
+  });
+});
+
+app.get("/cases/:caseId/messages", async (req, res) => {
+  const { caseId } = req.params;
+  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+    return res.status(403).json({ error: "Not allowed for this case" });
+  }
+
+  const result = await query(
+    `SELECT id, case_id, sender_user_id, body, created_at
+     FROM case_messages
+     WHERE case_id = $1
+     ORDER BY created_at DESC`,
+    [caseId]
+  );
+
+  const messages = result.rows.map((r) => ({
+    id: r.id,
+    caseId: r.case_id,
+    senderUserId: r.sender_user_id,
+    body: r.body,
+    createdAt: r.created_at,
+  }));
+
+  await req.audit({ caseId, action: "message.list", resourceType: "case", resourceId: caseId, meta: { total: messages.length } });
+  return res.json({ caseId, messages });
+});
+
+app.post("/cases/:caseId/messages", async (req, res) => {
+  const { caseId } = req.params;
+  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+    return res.status(403).json({ error: "Not allowed for this case" });
+  }
+
+  const { body } = req.body || {};
+  if (!body || !String(body).trim()) return res.status(400).json({ error: "body is required" });
+
+  const inserted = await query(
+    `INSERT INTO case_messages(id, case_id, sender_user_id, body)
+     VALUES ($1,$2,$3,$4)
+     RETURNING id, case_id, sender_user_id, body, created_at`,
+    [randomUUID(), caseId, req.auth.userId, String(body).trim()]
+  );
+
+  const m = inserted.rows[0];
+  await req.audit({ caseId, action: "message.create", resourceType: "case", resourceId: caseId, meta: { messageId: m.id } });
+  return res.status(201).json({
+    message: { id: m.id, caseId: m.case_id, senderUserId: m.sender_user_id, body: m.body, createdAt: m.created_at },
+  });
+});
+
+app.get("/cases/:caseId/documents", async (req, res) => {
+  const { caseId } = req.params;
+  const memberRole = req.auth.role === "admin" ? "admin" : await caseRole(query, req.auth.userId, caseId);
+  if (!memberRole) return res.status(403).json({ error: "Not allowed for this case" });
+
+  const result = await query(
+    `SELECT id, case_id, uploaded_by, name, url, visibility, created_at
+     FROM case_documents
+     WHERE case_id = $1
+     ORDER BY created_at DESC`,
+    [caseId]
+  );
+
+  const documents = result.rows
+    .filter((r) => canViewDocument(memberRole, r.visibility))
+    .map((r) => ({
+      id: r.id,
+      caseId: r.case_id,
+      uploadedBy: r.uploaded_by,
+      name: r.name,
+      url: r.url,
+      visibility: r.visibility,
+      createdAt: r.created_at,
+    }));
+
+  await req.audit({ caseId, action: "document.list", resourceType: "case", resourceId: caseId, meta: { total: documents.length } });
+  return res.json({ caseId, documents });
+});
+
+app.post("/cases/:caseId/documents", async (req, res) => {
+  const { caseId } = req.params;
+  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+    return res.status(403).json({ error: "Not allowed for this case" });
+  }
+
+  const { name, url, visibility } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ error: "name is required" });
+  if (!url || !String(url).trim()) return res.status(400).json({ error: "url is required" });
+  if (!DOCUMENT_VISIBILITY.has(visibility)) {
+    return res.status(400).json({ error: "visibility must be one of: all, professionals_only, parents_only" });
+  }
+
+  const inserted = await query(
+    `INSERT INTO case_documents(id, case_id, uploaded_by, name, url, visibility)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     RETURNING id, case_id, uploaded_by, name, url, visibility, created_at`,
+    [randomUUID(), caseId, req.auth.userId, String(name).trim(), String(url).trim(), visibility]
+  );
+
+  const d = inserted.rows[0];
+  await req.audit({ caseId, action: "document.create", resourceType: "case", resourceId: caseId, meta: { documentId: d.id, visibility: d.visibility } });
+
+  return res.status(201).json({
+    document: {
+      id: d.id,
+      caseId: d.case_id,
+      uploadedBy: d.uploaded_by,
+      name: d.name,
+      url: d.url,
+      visibility: d.visibility,
+      createdAt: d.created_at,
     },
   });
 });

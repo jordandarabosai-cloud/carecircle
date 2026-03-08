@@ -49,6 +49,18 @@ try {
   $timeline = Invoke-RestMethod -Uri "$base/cases/$caseId/timeline" -Method Get -Headers $parentHeaders
   Assert-True ($timeline.events.Count -ge 1) "timeline should be visible"
 
+  $newMsg = Invoke-RestMethod -Uri "$base/cases/$caseId/messages" -Method Post -Headers $workerHeaders -ContentType "application/json" -Body (@{ body = "Quick coordination update" } | ConvertTo-Json)
+  Assert-True (-not [string]::IsNullOrWhiteSpace($newMsg.message.id)) "message id should exist"
+
+  $messages = Invoke-RestMethod -Uri "$base/cases/$caseId/messages" -Method Get -Headers $parentHeaders
+  Assert-True ($messages.messages.Count -ge 1) "messages should be visible"
+
+  $doc = Invoke-RestMethod -Uri "$base/cases/$caseId/documents" -Method Post -Headers $workerHeaders -ContentType "application/json" -Body (@{ name = "Visit Plan"; url = "https://files.carecircle.dev/visit-plan.pdf"; visibility = "all" } | ConvertTo-Json)
+  Assert-True ($doc.document.visibility -eq "all") "document should be created"
+
+  $docs = Invoke-RestMethod -Uri "$base/cases/$caseId/documents" -Method Get -Headers $parentHeaders
+  Assert-True ($docs.documents.Count -ge 1) "documents should be visible"
+
   Write-Output "INTEGRATION_TESTS=PASS"
 }
 finally {

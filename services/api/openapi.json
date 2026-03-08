@@ -104,6 +104,34 @@
         "responses": { "201": { "description": "Created" } }
       }
     },
+    "/cases/{caseId}/messages": {
+      "get": {
+        "summary": "List case messages",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "summary": "Create case message",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/cases/{caseId}/documents": {
+      "get": {
+        "summary": "List case documents with visibility filtering",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "summary": "Create case document metadata",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
     "/cases/{caseId}/timeline": {
       "get": {
         "summary": "List timeline",

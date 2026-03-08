@@ -92,6 +92,10 @@ Pass returned token as `Authorization: Bearer <token>`.
 - `POST /cases/:caseId/members` (admin/case_worker)
 - `GET /cases/:caseId/invites` (admin/case_worker/gal)
 - `POST /cases/:caseId/invites` (admin/case_worker)
+- `GET /cases/:caseId/messages`
+- `POST /cases/:caseId/messages`
+- `GET /cases/:caseId/documents`
+- `POST /cases/:caseId/documents`
 - `GET /cases/:caseId/timeline`
 - `POST /cases/:caseId/timeline`
 - `GET /cases/:caseId/audit` (gal/case_worker/admin)

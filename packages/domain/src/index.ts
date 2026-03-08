@@ -47,6 +47,26 @@ export interface TimelineEvent {
   createdAt: string;
 }
 
+export interface CaseMessage {
+  id: string;
+  caseId: string;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+}
+
+export type DocumentVisibility = "all" | "professionals_only" | "parents_only";
+
+export interface CaseDocument {
+  id: string;
+  caseId: string;
+  uploadedBy: string;
+  name: string;
+  url: string;
+  visibility: DocumentVisibility;
+  createdAt: string;
+}
+
 export interface AuditEvent {
   id: string;
   actorUserId: string;
