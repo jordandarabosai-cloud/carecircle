@@ -16,4 +16,5 @@
 3. ✅ Add documents + messaging domains (DB + endpoints)
 4. ✅ Add tasks/expectations domain (DB + endpoints)
 5. ✅ Add OTP-style auth scaffold (`/auth/request-code`, `/auth/verify-code`) with rate limiting/lockout + delivery adapter (`dev`/`log`/`smtp`)
-6. Next: production delivery integration (email provider), file storage provider wiring, and role-specific UI flows
+6. ✅ Mobile app MVP client wired (OTP auth, case/timeline/tasks/messages/documents views)
+7. Next: production delivery integration (email provider), richer role-specific UI polish, and desktop parity

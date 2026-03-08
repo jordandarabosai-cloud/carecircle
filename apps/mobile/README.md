@@ -1,8 +1,23 @@
-# Mobile App (Expo shell)
+# Mobile App (Expo MVP)
 
-Scaffold placeholder for CareCircle mobile app.
+CareCircle mobile client MVP with API-backed flows:
+- OTP login (`/auth/request-code`, `/auth/verify-code`)
+- Case loading
+- Timeline list + quick post
+- Tasks list + quick create
+- Messages list + quick send
+- Documents list
 
-## Next
-- Install Expo dependencies
-- Replace `index.js` with a real React Native app entry
-- Add auth, case list, and timeline screens
+## Run
+From repo root:
+
+```bash
+npm install
+npm --workspace @carecircle/mobile run dev
+```
+
+Then open in Expo Go / emulator.
+
+## Notes
+- Default API base is `http://localhost:4010`
+- On physical device, replace localhost with your machine LAN IP.

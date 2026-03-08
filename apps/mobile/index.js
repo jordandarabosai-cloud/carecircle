@@ -1,3 +1,4 @@
-export default function MobileApp() {
-  return "CareCircle mobile shell";
-}
+import { registerRootComponent } from "expo";
+import App from "./App";
+
+registerRootComponent(App);
