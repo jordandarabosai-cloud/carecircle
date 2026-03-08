@@ -8,15 +8,17 @@ if (-not $env:DATABASE_URL) {
 }
 if (-not $env:PORT) { $env:PORT = "4010" }
 if (-not $env:AUTH_CODE_DELIVERY_MODE) { $env:AUTH_CODE_DELIVERY_MODE = "dev" }
+if (-not $env:AUTH_RATE_LIMIT_BYPASS) { $env:AUTH_RATE_LIMIT_BYPASS = "true" }
 
 $job = Start-Job -ScriptBlock {
-  param($repo, $dbUrl, $port, $deliveryMode)
+  param($repo, $dbUrl, $port, $deliveryMode, $rateLimitBypass)
   Set-Location $repo
   $env:DATABASE_URL = $dbUrl
   $env:PORT = $port
   $env:AUTH_CODE_DELIVERY_MODE = $deliveryMode
+  $env:AUTH_RATE_LIMIT_BYPASS = $rateLimitBypass
   node services/api/src/server.js
-} -ArgumentList $root, $env:DATABASE_URL, $env:PORT, $env:AUTH_CODE_DELIVERY_MODE
+} -ArgumentList $root, $env:DATABASE_URL, $env:PORT, $env:AUTH_CODE_DELIVERY_MODE, $env:AUTH_RATE_LIMIT_BYPASS
 
 Start-Sleep -Seconds 3
 

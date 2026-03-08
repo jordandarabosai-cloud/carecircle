@@ -68,15 +68,18 @@ app.post("/auth/request-code", async (req, res) => {
     return res.status(404).json({ error: "No user found for this email" });
   }
 
-  const rateResult = await query(
-    `SELECT COUNT(*)::int AS count
-     FROM auth_codes
-     WHERE user_id = $1 AND created_at > (NOW() - INTERVAL '15 minutes')`,
-    [row.id]
-  );
+  const bypassRateLimit = process.env.AUTH_RATE_LIMIT_BYPASS === "true";
+  if (!bypassRateLimit) {
+    const rateResult = await query(
+      `SELECT COUNT(*)::int AS count
+       FROM auth_codes
+       WHERE user_id = $1 AND created_at > (NOW() - INTERVAL '15 minutes')`,
+      [row.id]
+    );
 
-  if (rateResult.rows[0].count >= 5) {
-    return res.status(429).json({ error: "Too many code requests. Try again later." });
+    if (rateResult.rows[0].count >= 5) {
+      return res.status(429).json({ error: "Too many code requests. Try again later." });
+    }
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));

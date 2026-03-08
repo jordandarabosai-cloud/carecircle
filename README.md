@@ -87,7 +87,7 @@ Flow:
 `POST /auth/login` is now dev-only and requires `ALLOW_DEV_LOGIN=true`.
 
 Auth hardening added:
-- request throttling: max 5 OTP requests per 15 minutes per user
+- request throttling: max 5 OTP requests per 15 minutes per user (`AUTH_RATE_LIMIT_BYPASS=true` can disable for local automation/tests)
 - verify lockout: max 5 failed attempts per issued code
 - OTP delivery adapter via `AUTH_CODE_DELIVERY_MODE`:
   - `dev` → returns `devCode` in response (local only)
