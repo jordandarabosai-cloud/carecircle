@@ -1,9 +1,19 @@
 import { randomUUID } from "node:crypto";
 
-const defaultCustomer = {
-  id: "7f11c950-d2ab-4d4e-b9f6-9ec1050a77a1",
-  name: "Demo County DFCS",
-};
+const seedOrganizations = [
+  {
+    id: "7f11c950-d2ab-4d4e-b9f6-9ec1050a77a1",
+    name: "Family Support Services of North Florida",
+  },
+  {
+    id: "2a0d9c41-4ea1-4a26-b8ab-95c5398bcb6d",
+    name: "Daniel Kids Jacksonville",
+  },
+  {
+    id: "8dbf84d1-6ee2-4e69-90b6-4c0d9f7dd3a1",
+    name: "One More Child Jacksonville",
+  },
+];
 
 export const seedUsers = [
   {
@@ -71,12 +81,14 @@ const seedTasks = [
 ];
 
 export async function ensureSeedData(query) {
-  await query(
-    `INSERT INTO customers(id, name)
-     VALUES ($1,$2)
-     ON CONFLICT(id) DO UPDATE SET name = EXCLUDED.name`,
-    [defaultCustomer.id, defaultCustomer.name]
-  );
+  for (const org of seedOrganizations) {
+    await query(
+      `INSERT INTO customers(id, name)
+       VALUES ($1,$2)
+       ON CONFLICT(id) DO UPDATE SET name = EXCLUDED.name`,
+      [org.id, org.name]
+    );
+  }
 
   for (const u of seedUsers) {
     await query(
@@ -95,20 +107,36 @@ export async function ensureSeedData(query) {
       gal: "gal",
     };
 
+    const baseRole = orgRoleByGlobalRole[u.role] || "member";
+
+    // Core staff are assigned to the primary organization by default.
     await query(
       `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
-      [randomUUID(), defaultCustomer.id, u.id, orgRoleByGlobalRole[u.role] || "member"]
+      [randomUUID(), seedOrganizations[0].id, u.id, baseRole]
     );
+
+    // Foster parents and GALs are cross-org participants by default.
+    if (u.role === "foster_parent" || u.role === "gal") {
+      for (const org of seedOrganizations.slice(1)) {
+        await query(
+          `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
+           VALUES ($1,$2,$3,$4)
+           ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
+          [randomUUID(), org.id, u.id, baseRole]
+        );
+      }
+    }
   }
 
-  for (const c of seedCases) {
+  for (const [idx, c] of seedCases.entries()) {
+    const org = seedOrganizations[idx % seedOrganizations.length];
     await query(
       `INSERT INTO cases(id, title, created_by, customer_id)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT(id) DO UPDATE SET title = EXCLUDED.title, customer_id = EXCLUDED.customer_id`,
-      [c.id, c.title, c.createdBy, defaultCustomer.id]
+      [c.id, c.title, c.createdBy, org.id]
     );
 
     for (const u of seedUsers.filter((x) => x.role !== "admin" && x.role !== "dev_admin")) {
