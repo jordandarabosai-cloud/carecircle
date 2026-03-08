@@ -12,6 +12,6 @@
 
 ## Next priorities
 1. ✅ Add real onboarding/invite flow (case invites + accept endpoint)
-2. Add documents + messaging domains
-3. Add automated tests + OpenAPI spec
+2. ✅ Add automated integration tests + OpenAPI spec
+3. Add documents + messaging domains
 4. Add production auth (passwordless/email OTP or managed auth)

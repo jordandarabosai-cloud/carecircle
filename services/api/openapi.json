@@ -1,0 +1,130 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CareCircle API",
+    "version": "0.1.0",
+    "description": "MVP API for case coordination with role-based access control"
+  },
+  "servers": [
+    { "url": "http://localhost:4010" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": { "email": { "type": "string", "format": "email" } }
+      },
+      "CreateInviteRequest": {
+        "type": "object",
+        "required": ["email", "role"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string" },
+          "expiresInDays": { "type": "integer", "minimum": 1, "maximum": 30 }
+        }
+      },
+      "AcceptInviteRequest": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": { "type": "string" },
+          "fullName": { "type": "string" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/roles": {
+      "get": {
+        "summary": "List roles",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login using seeded email",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } }
+        },
+        "responses": { "200": { "description": "JWT token" } }
+      }
+    },
+    "/invites/accept": {
+      "post": {
+        "summary": "Accept invite token and join case",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AcceptInviteRequest" } } }
+        },
+        "responses": { "200": { "description": "Invite accepted" } }
+      }
+    },
+    "/cases": {
+      "get": {
+        "summary": "List cases visible to caller",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "summary": "Create case",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/cases/{caseId}/invites": {
+      "get": {
+        "summary": "List invites for case",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "summary": "Create invite for case",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateInviteRequest" } } }
+        },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/cases/{caseId}/timeline": {
+      "get": {
+        "summary": "List timeline",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "summary": "Create timeline event",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/cases/{caseId}/audit": {
+      "get": {
+        "summary": "List audit events for case",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  }
+}

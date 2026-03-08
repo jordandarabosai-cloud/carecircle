@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev:api": "npm --workspace @carecircle/api run dev",
-    "build:api": "npm --workspace @carecircle/api run build"
+    "build:api": "npm --workspace @carecircle/api run build",
+    "test:api": "npm --workspace @carecircle/api run test:integration"
   }
 }

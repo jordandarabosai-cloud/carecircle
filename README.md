@@ -59,6 +59,18 @@ Expected output includes:
 - `CASES_COUNT=...`
 - `TIMELINE_COUNT=...`
 
+### Integration tests
+
+```bash
+npm run test:api
+```
+
+Expected output includes:
+- `INTEGRATION_TESTS=PASS`
+
+### API spec
+- OpenAPI file: `services/api/openapi.json`
+
 ### Seed login accounts
 Use `POST /auth/login` with one of:
 - `admin@carecircle.dev`
