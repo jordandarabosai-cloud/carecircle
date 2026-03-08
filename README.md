@@ -74,6 +74,13 @@ Expected output includes:
 ### Deployment runbook
 - `docs/DEPLOYMENT.md`
 
+### Document upload/storage
+- Request upload target: `POST /cases/:caseId/documents/presign`
+- Upload file:
+  - local mode: `PUT` to returned `uploadUrl` (served via `/files/...`)
+  - s3 mode: currently returns direct object URL scaffold (add signed URLs before production)
+- Register document metadata: `POST /cases/:caseId/documents`
+
 ### Seed accounts (for OTP auth)
 Request/verify auth code with one of:
 - `admin@carecircle.dev`
@@ -116,6 +123,7 @@ Auth hardening added:
 - `PATCH /cases/:caseId/tasks/:taskId`
 - `GET /cases/:caseId/messages`
 - `POST /cases/:caseId/messages`
+- `POST /cases/:caseId/documents/presign`
 - `GET /cases/:caseId/documents`
 - `POST /cases/:caseId/documents`
 - `GET /cases/:caseId/timeline`

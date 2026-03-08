@@ -182,6 +182,14 @@
         "responses": { "201": { "description": "Created" } }
       }
     },
+    "/cases/{caseId}/documents/presign": {
+      "post": {
+        "summary": "Create upload target for a document",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "caseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
     "/cases/{caseId}/documents": {
       "get": {
         "summary": "List case documents with visibility filtering",

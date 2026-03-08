@@ -71,7 +71,10 @@ try {
   $messages = Invoke-RestMethod -Uri "$base/cases/$caseId/messages" -Method Get -Headers $parentHeaders
   Assert-True ($messages.messages.Count -ge 1) "messages should be visible"
 
-  $doc = Invoke-RestMethod -Uri "$base/cases/$caseId/documents" -Method Post -Headers $workerHeaders -ContentType "application/json" -Body (@{ name = "Visit Plan"; url = "https://files.carecircle.dev/visit-plan.pdf"; visibility = "all" } | ConvertTo-Json)
+  $presign = Invoke-RestMethod -Uri "$base/cases/$caseId/documents/presign" -Method Post -Headers $workerHeaders -ContentType "application/json" -Body (@{ fileName = "visit-plan.pdf"; contentType = "application/pdf" } | ConvertTo-Json)
+  Assert-True (-not [string]::IsNullOrWhiteSpace($presign.upload.uploadUrl)) "presign upload url should exist"
+
+  $doc = Invoke-RestMethod -Uri "$base/cases/$caseId/documents" -Method Post -Headers $workerHeaders -ContentType "application/json" -Body (@{ name = "Visit Plan"; url = $presign.upload.fileUrl; visibility = "all" } | ConvertTo-Json)
   Assert-True ($doc.document.visibility -eq "all") "document should be created"
 
   $docs = Invoke-RestMethod -Uri "$base/cases/$caseId/documents" -Method Get -Headers $parentHeaders

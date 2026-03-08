@@ -1,5 +1,6 @@
 import express from "express";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import { signUserToken, requireAuth } from "./auth.js";
 import { attachAudit } from "./audit.js";
 import { query, runMigrations } from "./db.js";
@@ -7,6 +8,7 @@ import { ensureSeedData } from "./seed.js";
 import { requireRole, canAccessCase, caseRole, roleAtLeast } from "./rbac.js";
 import { deliverAuthCode } from "./authDelivery.js";
 import { loadConfig } from "./config.js";
+import { createUploadTarget, saveLocalUpload } from "./storage.js";
 
 const config = loadConfig();
 
@@ -22,6 +24,22 @@ const TIMELINE_TYPES = new Set(["note", "hearing", "visit", "status", "task"]);
 const VALID_ROLES = new Set(["foster_parent", "biological_parent", "case_worker", "gal", "admin"]);
 const DOCUMENT_VISIBILITY = new Set(["all", "professionals_only", "parents_only"]);
 const TASK_STATUSES = new Set(["open", "in_progress", "done", "blocked"]);
+
+if (config.storageMode === "local") {
+  app.use("/files", express.static(path.resolve(config.localStoragePath)));
+}
+
+app.put("/uploads/*", express.raw({ type: "*/*", limit: "25mb" }), async (req, res) => {
+  if (config.storageMode !== "local") {
+    return res.status(404).json({ error: "Upload endpoint is only available in local storage mode" });
+  }
+
+  const key = req.params[0];
+  if (!key) return res.status(400).json({ error: "Missing upload key" });
+
+  await saveLocalUpload({ config, key, buffer: req.body });
+  return res.status(201).json({ ok: true, key, fileUrl: `${config.publicBaseUrl}/files/${encodeURIComponent(key)}` });
+});
 
 function canViewDocument(role, visibility) {
   if (role === "admin" || role === "case_worker") return true;
@@ -619,6 +637,29 @@ app.get("/cases/:caseId/documents", async (req, res) => {
 
   await req.audit({ caseId, action: "document.list", resourceType: "case", resourceId: caseId, meta: { total: documents.length } });
   return res.json({ caseId, documents });
+});
+
+app.post("/cases/:caseId/documents/presign", async (req, res) => {
+  const { caseId } = req.params;
+  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+    return res.status(403).json({ error: "Not allowed for this case" });
+  }
+
+  const { fileName, contentType } = req.body || {};
+  if (!fileName || !String(fileName).trim()) {
+    return res.status(400).json({ error: "fileName is required" });
+  }
+
+  const target = await createUploadTarget({
+    config,
+    caseId,
+    fileName: String(fileName).trim(),
+    contentType: contentType ? String(contentType) : "application/octet-stream",
+  });
+
+  await req.audit({ caseId, action: "document.presign", resourceType: "case", resourceId: caseId, meta: { key: target.key } });
+
+  return res.status(201).json({ upload: target });
 });
 
 app.post("/cases/:caseId/documents", async (req, res) => {

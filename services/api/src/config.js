@@ -9,6 +9,12 @@ export function loadConfig() {
     smtpUser: process.env.SMTP_USER || "",
     smtpPass: process.env.SMTP_PASS || "",
     smtpFrom: process.env.SMTP_FROM || "",
+    storageMode: process.env.STORAGE_MODE || "local",
+    localStoragePath: process.env.LOCAL_STORAGE_PATH || "uploads",
+    publicBaseUrl: process.env.PUBLIC_BASE_URL || `http://localhost:${Number(process.env.PORT || 4010)}`,
+    s3Bucket: process.env.S3_BUCKET || "",
+    s3Region: process.env.S3_REGION || "us-east-1",
+    s3PublicBaseUrl: process.env.S3_PUBLIC_BASE_URL || "",
   };
 
   const validModes = new Set(["dev", "log", "smtp"]);
@@ -20,6 +26,15 @@ export function loadConfig() {
     if (!config.smtpHost || !config.smtpUser || !config.smtpPass) {
       throw new Error("SMTP mode requires SMTP_HOST, SMTP_USER, and SMTP_PASS");
     }
+  }
+
+  const validStorageModes = new Set(["local", "s3"]);
+  if (!validStorageModes.has(config.storageMode)) {
+    throw new Error(`Invalid STORAGE_MODE: ${config.storageMode}`);
+  }
+
+  if (config.storageMode === "s3" && !config.s3Bucket) {
+    throw new Error("S3 mode requires S3_BUCKET");
   }
 
   return config;
