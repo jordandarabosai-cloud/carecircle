@@ -11,7 +11,7 @@
 8. ✅ Add PostgreSQL persistence + SQL migration runner + seed data
 
 ## Next priorities
-1. Add real onboarding/invite flow
+1. ✅ Add real onboarding/invite flow (case invites + accept endpoint)
 2. Add documents + messaging domains
 3. Add automated tests + OpenAPI spec
 4. Add production auth (passwordless/email OTP or managed auth)

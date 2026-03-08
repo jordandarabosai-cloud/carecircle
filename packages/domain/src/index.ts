@@ -24,6 +24,20 @@ export interface CaseMember {
   addedAt: string;
 }
 
+export interface CaseInvite {
+  id: string;
+  caseId: string;
+  email: string;
+  role: Role;
+  token: string;
+  status: "pending" | "accepted" | "revoked" | "expired";
+  invitedBy: string;
+  acceptedBy?: string | null;
+  acceptedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface TimelineEvent {
   id: string;
   caseId: string;
@@ -38,7 +52,7 @@ export interface AuditEvent {
   actorUserId: string;
   caseId?: string;
   action: string;
-  resourceType: "case" | "case_member" | "timeline_event" | "auth";
+  resourceType: "case" | "case_member" | "timeline_event" | "auth" | "case_invite";
   resourceId: string;
   meta?: Record<string, unknown> | null;
   createdAt: string;

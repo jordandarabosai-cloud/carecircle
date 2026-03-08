@@ -73,10 +73,13 @@ Pass returned token as `Authorization: Bearer <token>`.
 - `GET /health`
 - `GET /roles`
 - `POST /auth/login`
+- `POST /invites/accept` (invite onboarding)
 - `GET /me`
 - `GET /cases`
 - `POST /cases` (admin/case_worker)
 - `POST /cases/:caseId/members` (admin/case_worker)
+- `GET /cases/:caseId/invites` (admin/case_worker/gal)
+- `POST /cases/:caseId/invites` (admin/case_worker)
 - `GET /cases/:caseId/timeline`
 - `POST /cases/:caseId/timeline`
 - `GET /cases/:caseId/audit` (gal/case_worker/admin)
