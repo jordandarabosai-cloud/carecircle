@@ -57,6 +57,8 @@ export default function App() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [calendarScope, setCalendarScope] = useState("current");
+  const [allCalendarEvents, setAllCalendarEvents] = useState([]);
   const [selectedDayKey, setSelectedDayKey] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -75,18 +77,22 @@ export default function App() {
   const doneTasks = useMemo(() => tasks.filter((t) => t.status === "done").length, [tasks]);
   const openTasks = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
 
-  const calendarEvents = useMemo(() => {
+  const currentCaseCalendarEvents = useMemo(() => {
     const out = [];
     for (const e of timeline) {
       if (!e.createdAt) continue;
-      out.push({ id: `tl-${e.id}`, type: "timeline", label: e.text, date: new Date(e.createdAt) });
+      out.push({ id: `tl-${e.id}`, type: "timeline", label: e.text, date: new Date(e.createdAt), caseId });
     }
     for (const t of tasks) {
       if (!t.dueAt && !t.createdAt) continue;
-      out.push({ id: `task-${t.id}`, type: "task", label: `${t.title} (${t.status})`, date: new Date(t.dueAt || t.createdAt) });
+      out.push({ id: `task-${t.id}`, type: "task", label: `${t.title} (${t.status})`, date: new Date(t.dueAt || t.createdAt), caseId });
     }
     return out.filter((x) => !Number.isNaN(x.date.getTime()));
-  }, [timeline, tasks]);
+  }, [timeline, tasks, caseId]);
+
+  const calendarEvents = useMemo(() => {
+    return calendarScope === "all" ? allCalendarEvents : currentCaseCalendarEvents;
+  }, [calendarScope, allCalendarEvents, currentCaseCalendarEvents]);
 
   const monthGrid = useMemo(() => {
     const year = calendarMonth.getFullYear();
@@ -131,6 +137,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
 
+  useEffect(() => {
+    if (tab === "calendar" && calendarScope === "all" && token) {
+      loadAllCalendarEvents();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, calendarScope, token, cases.length]);
+
   async function requestCode() {
     setLoading(true); setError("");
     try {
@@ -172,6 +185,30 @@ export default function App() {
         apiRequest({ baseUrl: apiBase, path: `/cases/${caseId}/invites`, token }).catch(() => ({ invites: [] })),
       ]);
       setTimeline(t.events || []); setTasks(k.tasks || []); setMessages(m.messages || []); setDocuments(d.documents || []); setInvites(i.invites || []);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function loadAllCalendarEvents() {
+    if (!cases.length) return;
+    setLoading(true); setError("");
+    try {
+      const all = [];
+      for (const c of cases) {
+        // eslint-disable-next-line no-await-in-loop
+        const [t, k] = await Promise.all([
+          apiRequest({ baseUrl: apiBase, path: `/cases/${c.id}/timeline`, token }),
+          apiRequest({ baseUrl: apiBase, path: `/cases/${c.id}/tasks`, token }),
+        ]);
+        for (const e of (t.events || [])) {
+          if (!e.createdAt) continue;
+          all.push({ id: `tl-${e.id}`, type: "timeline", label: `${c.title}: ${e.text}`, date: new Date(e.createdAt), caseId: c.id });
+        }
+        for (const task of (k.tasks || [])) {
+          if (!task.dueAt && !task.createdAt) continue;
+          all.push({ id: `task-${task.id}`, type: "task", label: `${c.title}: ${task.title} (${task.status})`, date: new Date(task.dueAt || task.createdAt), caseId: c.id });
+        }
+      }
+      setAllCalendarEvents(all.filter((x) => !Number.isNaN(x.date.getTime())));
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -343,6 +380,10 @@ export default function App() {
                   {calendarMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
                 </h3>
                 <div className="row">
+                  <select value={calendarScope} onChange={(e) => setCalendarScope(e.target.value)}>
+                    <option value="current">Current case only</option>
+                    <option value="all">All my cases</option>
+                  </select>
                   <button className="secondary" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}>Prev</button>
                   <button className="secondary" onClick={() => setCalendarMonth(new Date())}>Today</button>
                   <button className="secondary" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}>Next</button>
