@@ -63,6 +63,7 @@ export default function App() {
   const [docName, setDocName] = useState("");
   const [docVisibility, setDocVisibility] = useState("all");
   const [docCategory, setDocCategory] = useState("general");
+  const [docFilterCategory, setDocFilterCategory] = useState("all");
   const [docFile, setDocFile] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
@@ -155,6 +156,11 @@ export default function App() {
       .sort((a, b) => a.date - b.date)
       .slice(0, 6);
   }, [calendarEvents]);
+
+  const filteredDocuments = useMemo(() => {
+    if (docFilterCategory === "all") return documents;
+    return documents.filter((d) => (d.category || "general") === docFilterCategory);
+  }, [documents, docFilterCategory]);
 
   useEffect(() => localStorage.setItem("cc_api_base", apiBase), [apiBase]);
   useEffect(() => token ? localStorage.setItem("cc_token", token) : localStorage.removeItem("cc_token"), [token]);
@@ -424,22 +430,24 @@ export default function App() {
               </div>
               <div>
                 <h3>Documents by Category</h3>
-                {[
-                  "school",
-                  "medical",
-                  "court",
-                  "visits",
-                  "general",
-                ].map((cat) => {
-                  const docs = documents.filter((d) => (d.category || "general") === cat);
-                  if (!docs.length) return null;
-                  return (
-                    <div key={cat} className="item">
-                      <div className="case-title">{cat}</div>
-                      <div className="muted">{docs.length} document{docs.length > 1 ? "s" : ""}</div>
-                    </div>
-                  );
-                })}
+                <div className="row">
+                  {["all", "school", "medical", "court", "visits", "general"].map((cat) => {
+                    const docs = cat === "all" ? documents : documents.filter((d) => (d.category || "general") === cat);
+                    if (cat !== "all" && !docs.length) return null;
+                    return (
+                      <button
+                        key={cat}
+                        className={docFilterCategory === cat ? "chip active" : "chip"}
+                        onClick={() => {
+                          setDocFilterCategory(cat);
+                          setTab("documents");
+                        }}
+                      >
+                        {cat} ({docs.length})
+                      </button>
+                    );
+                  })}
+                </div>
                 {documents.length === 0 ? <div className="muted">No documents uploaded yet.</div> : null}
               </div>
             </div>
@@ -593,7 +601,19 @@ export default function App() {
                 <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
                 <button onClick={uploadDocument}>Upload</button>
               </div>
-              {documents.map((d) => <div key={d.id} className="item"><div>{d.name}</div><div className="muted">{d.category || "general"} • {d.url}</div></div>)}
+              <div className="row">
+                {["all", "school", "medical", "court", "visits", "general"].map((cat) => {
+                  const docs = cat === "all" ? documents : documents.filter((d) => (d.category || "general") === cat);
+                  if (cat !== "all" && !docs.length) return null;
+                  return (
+                    <button key={cat} className={docFilterCategory === cat ? "chip active" : "chip"} onClick={() => setDocFilterCategory(cat)}>
+                      {cat} ({docs.length})
+                    </button>
+                  );
+                })}
+              </div>
+              {filteredDocuments.map((d) => <div key={d.id} className="item"><div>{d.name}</div><div className="muted">{d.category || "general"} • {d.url}</div></div>)}
+              {filteredDocuments.length === 0 ? <div className="muted">No documents in this category.</div> : null}
             </>
           )}
 

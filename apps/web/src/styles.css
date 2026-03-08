@@ -62,6 +62,9 @@ input, select { background: #fff; min-height: 40px; }
 .muted { color: #64748b; }
 .error { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px; }
 
+button.chip { background: #eef2ff; color: #1e3a8a; border: 1px solid #c7d2fe; border-radius: 999px; padding: 6px 10px; font-size: 12px; }
+button.chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
 .calendar-wrap { display: grid; gap: 10px; }
 .calendar-grid-head { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; color: #64748b; font-size: 12px; font-weight: 600; }
 .calendar-grid-head div { text-align: center; padding: 4px 0; }
