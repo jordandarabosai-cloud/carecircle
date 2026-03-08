@@ -20,5 +20,6 @@ npm --workspace @carecircle/web run build
 ```
 
 ## Notes
-- Default API base: `http://localhost:4010`
-- For deployed backend, change API base in the app UI.
+- Default API base comes from `VITE_API_BASE_URL` (fallback `http://localhost:4010`)
+- API base, auth token, and user session are persisted in browser localStorage
+- For deployed backend, set `VITE_API_BASE_URL` in hosting env for clean defaults

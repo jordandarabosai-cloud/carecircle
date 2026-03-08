@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const defaultApiBase = "http://localhost:4010";
+const envApiBase = (import.meta.env.VITE_API_BASE_URL || "").trim();
+const defaultApiBase = envApiBase || "http://localhost:4010";
 
 async function apiRequest({ baseUrl, path, method = "GET", token, body }) {
   const res = await fetch(`${baseUrl}${path}`, {
@@ -19,11 +20,18 @@ async function apiRequest({ baseUrl, path, method = "GET", token, body }) {
 const tabs = ["timeline", "tasks", "messages", "documents", "invites"];
 
 export default function App() {
-  const [apiBase, setApiBase] = useState(defaultApiBase);
+  const [apiBase, setApiBase] = useState(() => localStorage.getItem("cc_api_base") || defaultApiBase);
   const [email, setEmail] = useState("worker@carecircle.dev");
   const [code, setCode] = useState("");
-  const [token, setToken] = useState("");
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem("cc_token") || "");
+  const [user, setUser] = useState(() => {
+    const raw = localStorage.getItem("cc_user");
+    try {
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
   const [cases, setCases] = useState([]);
   const [caseId, setCaseId] = useState("");
 
@@ -37,10 +45,35 @@ export default function App() {
   const [compose, setCompose] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("biological_parent");
+  const [docName, setDocName] = useState("");
+  const [docVisibility, setDocVisibility] = useState("all");
+  const [docFile, setDocFile] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
+
+  useEffect(() => {
+    localStorage.setItem("cc_api_base", apiBase);
+  }, [apiBase]);
+
+  useEffect(() => {
+    if (token) localStorage.setItem("cc_token", token);
+    else localStorage.removeItem("cc_token");
+  }, [token]);
+
+  useEffect(() => {
+    if (user) localStorage.setItem("cc_user", JSON.stringify(user));
+    else localStorage.removeItem("cc_user");
+  }, [user]);
+
+  useEffect(() => {
+    if (token && !cases.length) {
+      refreshCases().catch((e) => setError(e.message));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   useEffect(() => {
     if (token && caseId) refreshCaseData();
@@ -75,10 +108,23 @@ export default function App() {
     }
   }
 
+  function signOut() {
+    setToken("");
+    setUser(null);
+    setCaseId("");
+    setCases([]);
+    setTimeline([]);
+    setTasks([]);
+    setMessages([]);
+    setDocuments([]);
+    setInvites([]);
+  }
+
   async function refreshCases(authToken = token) {
     const out = await apiRequest({ baseUrl: apiBase, path: "/cases", token: authToken });
-    setCases(out.cases || []);
-    if (!caseId && out.cases?.length) setCaseId(out.cases[0].id);
+    const list = out.cases || [];
+    setCases(list);
+    if (!caseId && list.length) setCaseId(list[0].id);
   }
 
   async function refreshCaseData() {
@@ -160,6 +206,53 @@ export default function App() {
     }
   }
 
+  async function uploadDocument() {
+    if (!caseId || !docFile) return;
+
+    setLoading(true);
+    setError("");
+    try {
+      const name = docName.trim() || docFile.name;
+
+      const presign = await apiRequest({
+        baseUrl: apiBase,
+        path: `/cases/${caseId}/documents/presign`,
+        method: "POST",
+        token,
+        body: { fileName: docFile.name, contentType: docFile.type || "application/octet-stream" },
+      });
+
+      const upload = presign.upload;
+      const uploadRes = await fetch(upload.uploadUrl, {
+        method: upload.method || "PUT",
+        headers: upload.headers || { "Content-Type": docFile.type || "application/octet-stream" },
+        body: docFile,
+      });
+
+      if (!uploadRes.ok) throw new Error(`Upload failed (${uploadRes.status})`);
+
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/cases/${caseId}/documents`,
+        method: "POST",
+        token,
+        body: {
+          name,
+          url: upload.fileUrl,
+          visibility: docVisibility,
+        },
+      });
+
+      setDocName("");
+      setDocFile(null);
+      await refreshCaseData();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="app">
       <h1>CareCircle Web</h1>
@@ -182,7 +275,7 @@ export default function App() {
           <section className="card">
             <div className="row between">
               <div>Signed in as <b>{user?.fullName}</b> ({user?.role})</div>
-              <button className="secondary" onClick={() => { setToken(""); setUser(null); }}>Sign out</button>
+              <button className="secondary" onClick={signOut}>Sign out</button>
             </div>
             <div className="row">
               <button onClick={() => refreshCases()}>Refresh cases</button>
@@ -208,32 +301,53 @@ export default function App() {
               </div>
             ) : null}
 
-            <div>
-              {tab === "timeline" && timeline.map((e) => <div key={e.id} className="item">[{e.type}] {e.text}</div>)}
-              {tab === "tasks" && tasks.map((t) => (
-                <div key={t.id} className="item">
-                  <div>{t.title}</div>
-                  <div className="muted">{t.status}</div>
-                  <div className="row">
-                    {["open", "in_progress", "done"].map((s) => (
-                      <button key={s} className="secondary" onClick={() => updateTask(t.id, s)}>{s}</button>
-                    ))}
-                  </div>
+            {tab === "timeline" && timeline.map((e) => <div key={e.id} className="item">[{e.type}] {e.text}</div>)}
+
+            {tab === "tasks" && tasks.map((t) => (
+              <div key={t.id} className="item">
+                <div>{t.title}</div>
+                <div className="muted">{t.status}</div>
+                <div className="row">
+                  {["open", "in_progress", "done"].map((s) => (
+                    <button key={s} className="secondary" onClick={() => updateTask(t.id, s)}>{s}</button>
+                  ))}
                 </div>
-              ))}
-              {tab === "messages" && messages.map((m) => <div key={m.id} className="item">{m.body}</div>)}
-              {tab === "documents" && documents.map((d) => <div key={d.id} className="item"><div>{d.name}</div><div className="muted">{d.url}</div></div>)}
-              {tab === "invites" && (
-                <div>
-                  <div className="row">
-                    <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="invite email" />
-                    <input value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} placeholder="role" />
-                    <button onClick={createInvite}>Invite</button>
-                  </div>
-                  {invites.map((i) => <div key={i.id} className="item">{i.email} • {i.role} • {i.status}</div>)}
+              </div>
+            ))}
+
+            {tab === "messages" && messages.map((m) => <div key={m.id} className="item">{m.body}</div>)}
+
+            {tab === "documents" && (
+              <>
+                <div className="row">
+                  <input value={docName} onChange={(e) => setDocName(e.target.value)} placeholder="Document name (optional)" />
+                  <select value={docVisibility} onChange={(e) => setDocVisibility(e.target.value)}>
+                    <option value="all">all</option>
+                    <option value="professionals_only">professionals_only</option>
+                    <option value="parents_only">parents_only</option>
+                  </select>
+                  <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
+                  <button onClick={uploadDocument}>Upload</button>
                 </div>
-              )}
-            </div>
+                {documents.map((d) => <div key={d.id} className="item"><div>{d.name}</div><div className="muted">{d.url}</div></div>)}
+              </>
+            )}
+
+            {tab === "invites" && (
+              <div>
+                <div className="row">
+                  <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="invite email" />
+                  <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                    <option value="biological_parent">biological_parent</option>
+                    <option value="foster_parent">foster_parent</option>
+                    <option value="case_worker">case_worker</option>
+                    <option value="gal">gal</option>
+                  </select>
+                  <button onClick={createInvite}>Invite</button>
+                </div>
+                {invites.map((i) => <div key={i.id} className="item">{i.email} • {i.role} • {i.status}</div>)}
+              </div>
+            )}
           </section>
         </>
       )}
