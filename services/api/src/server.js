@@ -5,6 +5,7 @@ import { attachAudit } from "./audit.js";
 import { query, runMigrations } from "./db.js";
 import { ensureSeedData } from "./seed.js";
 import { requireRole, canAccessCase, caseRole, roleAtLeast } from "./rbac.js";
+import { deliverAuthCode } from "./authDelivery.js";
 
 const app = express();
 app.use(express.json());
@@ -87,9 +88,10 @@ app.post("/auth/request-code", async (req, res) => {
     [randomUUID(), row.id, code, expiresAt]
   );
 
-  // NOTE: In production this should be delivered via email/SMS provider, not returned.
-  const response = { ok: true, expiresAt };
-  if (process.env.AUTH_CODE_DELIVERY_MODE === "dev") response.devCode = code;
+  const delivery = await deliverAuthCode({ email: row.email, code, expiresAt });
+
+  const response = { ok: true, expiresAt, deliveryMode: delivery.mode };
+  if (delivery.devCode) response.devCode = delivery.devCode;
 
   return res.json(response);
 });

@@ -89,7 +89,10 @@ Flow:
 Auth hardening added:
 - request throttling: max 5 OTP requests per 15 minutes per user
 - verify lockout: max 5 failed attempts per issued code
-- `AUTH_CODE_DELIVERY_MODE=dev` controls whether `devCode` is returned in responses
+- OTP delivery adapter via `AUTH_CODE_DELIVERY_MODE`:
+  - `dev` → returns `devCode` in response (local only)
+  - `log` → logs code to server logs
+  - `smtp` → sends real email using SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, optional `SMTP_FROM`)
 
 ### Implemented endpoints
 - `GET /health`
