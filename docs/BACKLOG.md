@@ -19,4 +19,5 @@
 6. ✅ Mobile app MVP client wired (OTP auth, case/timeline/tasks/messages/documents views)
 7. ✅ Desktop macOS-ready MVP client wired (Electron auth/case/timeline/tasks/messages/documents/invites)
 8. ✅ Native desktop packaging validation scaffolding on macOS (check script, entitlements, notarization hook, release checklist)
-9. Next: run full packaging + notarization on a real macOS builder with Apple credentials
+9. ✅ Added GitHub Actions macOS desktop build workflow + CI docs
+10. Next: configure Apple signing/notarization secrets and validate first signed artifact run
