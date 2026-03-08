@@ -15,7 +15,9 @@ For signed/notarized builds, configure these repository secrets:
 - `CSC_LINK` (base64 .p12 cert or file URL, per electron-builder docs)
 - `CSC_KEY_PASSWORD`
 
-If Apple/cert secrets are missing, build may still produce unsigned artifacts depending on electron-builder behavior, but notarization/signing will be skipped/fail.
+## Signed vs unsigned behavior
+- If all Apple + cert secrets are present, workflow runs **signed/notarized path**.
+- If any are missing, workflow runs **unsigned fallback path** and still uploads artifacts for testing.
 
 ## Runbook
 1. Add/update secrets in GitHub repo settings.
