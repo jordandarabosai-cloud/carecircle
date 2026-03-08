@@ -86,6 +86,11 @@ Flow:
 
 `POST /auth/login` is now dev-only and requires `ALLOW_DEV_LOGIN=true`.
 
+Auth hardening added:
+- request throttling: max 5 OTP requests per 15 minutes per user
+- verify lockout: max 5 failed attempts per issued code
+- `AUTH_CODE_DELIVERY_MODE=dev` controls whether `devCode` is returned in responses
+
 ### Implemented endpoints
 - `GET /health`
 - `GET /roles`

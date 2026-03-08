@@ -67,6 +67,17 @@ app.post("/auth/request-code", async (req, res) => {
     return res.status(404).json({ error: "No user found for this email" });
   }
 
+  const rateResult = await query(
+    `SELECT COUNT(*)::int AS count
+     FROM auth_codes
+     WHERE user_id = $1 AND created_at > (NOW() - INTERVAL '15 minutes')`,
+    [row.id]
+  );
+
+  if (rateResult.rows[0].count >= 5) {
+    return res.status(429).json({ error: "Too many code requests. Try again later." });
+  }
+
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
@@ -78,7 +89,7 @@ app.post("/auth/request-code", async (req, res) => {
 
   // NOTE: In production this should be delivered via email/SMS provider, not returned.
   const response = { ok: true, expiresAt };
-  if (process.env.NODE_ENV !== "production") response.devCode = code;
+  if (process.env.AUTH_CODE_DELIVERY_MODE === "dev") response.devCode = code;
 
   return res.json(response);
 });
@@ -95,7 +106,7 @@ app.post("/auth/verify-code", async (req, res) => {
   if (!userRow) return res.status(404).json({ error: "No user found for this email" });
 
   const codeResult = await query(
-    `SELECT id, code, expires_at, used_at
+    `SELECT id, code, expires_at, used_at, failed_attempts
      FROM auth_codes
      WHERE user_id = $1
      ORDER BY created_at DESC
@@ -107,7 +118,15 @@ app.post("/auth/verify-code", async (req, res) => {
   if (!authCode) return res.status(400).json({ error: "No auth code requested" });
   if (authCode.used_at) return res.status(400).json({ error: "Auth code already used" });
   if (new Date(authCode.expires_at) < new Date()) return res.status(400).json({ error: "Auth code expired" });
-  if (String(authCode.code) !== String(code)) return res.status(400).json({ error: "Invalid code" });
+
+  if (Number(authCode.failed_attempts || 0) >= 5) {
+    return res.status(429).json({ error: "Too many failed attempts. Request a new code." });
+  }
+
+  if (String(authCode.code) !== String(code)) {
+    await query("UPDATE auth_codes SET failed_attempts = failed_attempts + 1 WHERE id = $1", [authCode.id]);
+    return res.status(400).json({ error: "Invalid code" });
+  }
 
   await query("UPDATE auth_codes SET used_at = NOW() WHERE id = $1", [authCode.id]);
 
