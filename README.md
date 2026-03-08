@@ -78,7 +78,7 @@ Expected output includes:
 - Request upload target: `POST /cases/:caseId/documents/presign`
 - Upload file:
   - local mode: `PUT` to returned `uploadUrl` (served via `/files/...`)
-  - s3 mode: currently returns direct object URL scaffold (add signed URLs before production)
+  - s3 mode: `PUT` to returned **signed URL** (15-minute expiry)
 - Register document metadata: `POST /cases/:caseId/documents`
 
 ### Seed accounts (for OTP auth)

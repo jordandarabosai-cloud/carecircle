@@ -15,7 +15,7 @@ If `AUTH_CODE_DELIVERY_MODE=smtp`, also set:
 Storage vars:
 - `STORAGE_MODE` (`local` or `s3`)
 - local mode: `LOCAL_STORAGE_PATH`, `PUBLIC_BASE_URL`
-- s3 mode: `S3_BUCKET`, `S3_REGION`, optional `S3_PUBLIC_BASE_URL`
+- s3 mode: `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, optional `S3_ENDPOINT`, optional `S3_FORCE_PATH_STYLE`, optional `S3_PUBLIC_BASE_URL`
 
 ## 2) Startup checklist
 1. Ensure PostgreSQL is reachable from the API host.

@@ -1,9 +1,26 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function sanitizeName(name) {
   return String(name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function buildS3Client(config) {
+  const clientConfig = {
+    region: config.s3Region,
+    credentials: {
+      accessKeyId: config.s3AccessKeyId,
+      secretAccessKey: config.s3SecretAccessKey,
+    },
+  };
+
+  if (config.s3Endpoint) clientConfig.endpoint = config.s3Endpoint;
+  if (config.s3ForcePathStyle) clientConfig.forcePathStyle = true;
+
+  return new S3Client(clientConfig);
 }
 
 export async function createUploadTarget({ config, caseId, fileName, contentType }) {
@@ -25,19 +42,29 @@ export async function createUploadTarget({ config, caseId, fileName, contentType
   }
 
   if (config.storageMode === "s3") {
-    // MVP scaffold: caller uploads directly to object storage URL pattern.
-    // Replace with signed URL generation in production hardening pass.
+    const client = buildS3Client(config);
+    const resolvedContentType = contentType || "application/octet-stream";
+
+    const command = new PutObjectCommand({
+      Bucket: config.s3Bucket,
+      Key: key,
+      ContentType: resolvedContentType,
+    });
+
+    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 900 });
+
     const base = config.s3PublicBaseUrl || `https://${config.s3Bucket}.s3.${config.s3Region}.amazonaws.com`;
     const fileUrl = `${base}/${key}`;
+
     return {
       key,
-      uploadUrl: fileUrl,
+      uploadUrl,
       fileUrl,
       method: "PUT",
       headers: {
-        "Content-Type": contentType || "application/octet-stream",
+        "Content-Type": resolvedContentType,
       },
-      note: "S3 mode currently returns direct object URL scaffold; add signed URL generation for production",
+      expiresInSeconds: 900,
     };
   }
 
