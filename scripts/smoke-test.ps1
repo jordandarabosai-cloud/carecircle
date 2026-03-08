@@ -22,7 +22,8 @@ try {
   $base = "http://localhost:$($env:PORT)"
 
   $health = Invoke-RestMethod -Uri "$base/health" -Method Get
-  $login = Invoke-RestMethod -Uri "$base/auth/login" -Method Post -ContentType "application/json" -Body '{"email":"worker@carecircle.dev"}'
+  $reqCode = Invoke-RestMethod -Uri "$base/auth/request-code" -Method Post -ContentType "application/json" -Body '{"email":"worker@carecircle.dev"}'
+  $login = Invoke-RestMethod -Uri "$base/auth/verify-code" -Method Post -ContentType "application/json" -Body (@{ email = 'worker@carecircle.dev'; code = $reqCode.devCode } | ConvertTo-Json)
   $headers = @{ Authorization = "Bearer $($login.token)" }
   $cases = Invoke-RestMethod -Uri "$base/cases" -Method Get -Headers $headers
   $timeline = Invoke-RestMethod -Uri "$base/cases/$($cases.cases[0].id)/timeline" -Method Get -Headers $headers

@@ -31,6 +31,10 @@ app.get("/roles", (_req, res) => {
 });
 
 app.post("/auth/login", async (req, res) => {
+  if (process.env.ALLOW_DEV_LOGIN !== "true") {
+    return res.status(403).json({ error: "Dev login disabled. Use /auth/request-code and /auth/verify-code" });
+  }
+
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: "email is required" });
 
@@ -45,6 +49,69 @@ app.post("/auth/login", async (req, res) => {
   }
 
   const user = { id: row.id, email: row.email, fullName: row.full_name, role: row.role };
+  const token = signUserToken(user);
+  return res.json({ token, user });
+});
+
+app.post("/auth/request-code", async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: "email is required" });
+
+  const userResult = await query(
+    "SELECT id, email, full_name, role FROM users WHERE lower(email) = lower($1) LIMIT 1",
+    [email]
+  );
+
+  const row = userResult.rows[0];
+  if (!row) {
+    return res.status(404).json({ error: "No user found for this email" });
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  await query(
+    `INSERT INTO auth_codes(id, user_id, code, expires_at)
+     VALUES ($1,$2,$3,$4)`,
+    [randomUUID(), row.id, code, expiresAt]
+  );
+
+  // NOTE: In production this should be delivered via email/SMS provider, not returned.
+  const response = { ok: true, expiresAt };
+  if (process.env.NODE_ENV !== "production") response.devCode = code;
+
+  return res.json(response);
+});
+
+app.post("/auth/verify-code", async (req, res) => {
+  const { email, code } = req.body || {};
+  if (!email || !code) return res.status(400).json({ error: "email and code are required" });
+
+  const userResult = await query(
+    "SELECT id, email, full_name, role FROM users WHERE lower(email) = lower($1) LIMIT 1",
+    [email]
+  );
+  const userRow = userResult.rows[0];
+  if (!userRow) return res.status(404).json({ error: "No user found for this email" });
+
+  const codeResult = await query(
+    `SELECT id, code, expires_at, used_at
+     FROM auth_codes
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [userRow.id]
+  );
+
+  const authCode = codeResult.rows[0];
+  if (!authCode) return res.status(400).json({ error: "No auth code requested" });
+  if (authCode.used_at) return res.status(400).json({ error: "Auth code already used" });
+  if (new Date(authCode.expires_at) < new Date()) return res.status(400).json({ error: "Auth code expired" });
+  if (String(authCode.code) !== String(code)) return res.status(400).json({ error: "Invalid code" });
+
+  await query("UPDATE auth_codes SET used_at = NOW() WHERE id = $1", [authCode.id]);
+
+  const user = { id: userRow.id, email: userRow.email, fullName: userRow.full_name, role: userRow.role };
   const token = signUserToken(user);
   return res.json({ token, user });
 });

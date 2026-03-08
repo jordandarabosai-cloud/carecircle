@@ -22,6 +22,19 @@
         "required": ["email"],
         "properties": { "email": { "type": "string", "format": "email" } }
       },
+      "RequestCodeRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": { "email": { "type": "string", "format": "email" } }
+      },
+      "VerifyCodeRequest": {
+        "type": "object",
+        "required": ["email", "code"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "code": { "type": "string" }
+        }
+      },
       "CreateInviteRequest": {
         "type": "object",
         "required": ["email", "role"],
@@ -56,10 +69,30 @@
     },
     "/auth/login": {
       "post": {
-        "summary": "Login using seeded email",
+        "summary": "Dev-only login using seeded email",
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } }
+        },
+        "responses": { "200": { "description": "JWT token" } }
+      }
+    },
+    "/auth/request-code": {
+      "post": {
+        "summary": "Request one-time auth code",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RequestCodeRequest" } } }
+        },
+        "responses": { "200": { "description": "Code requested" } }
+      }
+    },
+    "/auth/verify-code": {
+      "post": {
+        "summary": "Verify one-time auth code and issue JWT",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerifyCodeRequest" } } }
         },
         "responses": { "200": { "description": "JWT token" } }
       }

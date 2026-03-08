@@ -28,7 +28,10 @@ try {
   $health = Invoke-RestMethod -Uri "$base/health" -Method Get
   Assert-True ($health.ok -eq $true) "health should be ok"
 
-  $workerLogin = Invoke-RestMethod -Uri "$base/auth/login" -Method Post -ContentType "application/json" -Body (@{ email = "worker@carecircle.dev" } | ConvertTo-Json)
+  $workerCodeReq = Invoke-RestMethod -Uri "$base/auth/request-code" -Method Post -ContentType "application/json" -Body (@{ email = "worker@carecircle.dev" } | ConvertTo-Json)
+  Assert-True (-not [string]::IsNullOrWhiteSpace($workerCodeReq.devCode)) "worker dev code should exist"
+
+  $workerLogin = Invoke-RestMethod -Uri "$base/auth/verify-code" -Method Post -ContentType "application/json" -Body (@{ email = "worker@carecircle.dev"; code = $workerCodeReq.devCode } | ConvertTo-Json)
   Assert-True (-not [string]::IsNullOrWhiteSpace($workerLogin.token)) "worker token should exist"
   $workerHeaders = @{ Authorization = "Bearer $($workerLogin.token)" }
 

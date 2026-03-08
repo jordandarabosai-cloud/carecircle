@@ -71,20 +71,27 @@ Expected output includes:
 ### API spec
 - OpenAPI file: `services/api/openapi.json`
 
-### Seed login accounts
-Use `POST /auth/login` with one of:
+### Seed accounts (for OTP auth)
+Request/verify auth code with one of:
 - `admin@carecircle.dev`
 - `worker@carecircle.dev`
 - `foster@carecircle.dev`
 - `bio@carecircle.dev`
 - `gal@carecircle.dev`
 
-Pass returned token as `Authorization: Bearer <token>`.
+Flow:
+1. `POST /auth/request-code` with email
+2. `POST /auth/verify-code` with email + code
+3. Use returned token as `Authorization: Bearer <token>`
+
+`POST /auth/login` is now dev-only and requires `ALLOW_DEV_LOGIN=true`.
 
 ### Implemented endpoints
 - `GET /health`
 - `GET /roles`
-- `POST /auth/login`
+- `POST /auth/request-code`
+- `POST /auth/verify-code`
+- `POST /auth/login` (dev-only, gated)
 - `POST /invites/accept` (invite onboarding)
 - `GET /me`
 - `GET /cases`
