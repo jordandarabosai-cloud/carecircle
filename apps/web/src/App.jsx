@@ -49,6 +49,7 @@ const DOC_CATEGORY_META = {
 
 const ROLE_LABELS = {
   admin: "Admin",
+  dev_admin: "Development Admin",
   case_worker: "Case Worker",
   foster_parent: "Foster Parent",
   biological_parent: "Biological Parent",
@@ -101,17 +102,19 @@ export default function App() {
   const [managerCases, setManagerCases] = useState([]);
   const [managerWorkers, setManagerWorkers] = useState([]);
   const [managerUsers, setManagerUsers] = useState([]);
+  const [devCustomers, setDevCustomers] = useState([]);
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const tabs = useMemo(() => {
     const role = user?.role;
-    const canManage = role === "admin" || role === "case_worker";
+    const canManage = role === "admin" || role === "case_worker" || role === "dev_admin";
     const isParent = role === "biological_parent" || role === "foster_parent";
 
     if (isParent) return parentTabs;
 
     let list = [...baseTabs];
     if (canManage) list = [["manager", "Manager"], ...list];
+    if (role === "dev_admin") list = [["development", "Development"], ...list];
     return list;
   }, [user?.role]);
 
@@ -214,6 +217,9 @@ export default function App() {
     if (tab === "manager" && token) {
       loadManagerData();
     }
+    if (tab === "development" && token) {
+      loadDevelopmentData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, calendarScope, token, cases.length]);
 
@@ -302,6 +308,33 @@ export default function App() {
         body: { role },
       });
       await loadManagerData();
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function loadDevelopmentData() {
+    setLoading(true); setError("");
+    try {
+      const [customers, users] = await Promise.all([
+        apiRequest({ baseUrl: apiBase, path: "/development/customers", token }),
+        apiRequest({ baseUrl: apiBase, path: "/management/users", token }),
+      ]);
+      setDevCustomers(customers.customers || []);
+      setManagerUsers(users.users || []);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function assignUserToCustomer(customerId, userId) {
+    if (!customerId || !userId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/development/customers/${customerId}/users/assign`,
+        method: "POST",
+        token,
+        body: { userId, membershipRole: "member" },
+      });
+      await loadDevelopmentData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -490,6 +523,35 @@ export default function App() {
             </div>
           )}
 
+          {tab === "development" && (
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>Development Admin Console</h3>
+                <button className="secondary" onClick={loadDevelopmentData}>Refresh Dev Console</button>
+              </div>
+              <div className="muted">Assign users to customers/organizations at the platform level.</div>
+
+              <div className="cases-grid">
+                {devCustomers.map((c) => (
+                  <div key={c.id} className="item case-card">
+                    <div>
+                      <div className="case-title">{c.name}</div>
+                      <div className="muted">{c.userCount} users • {c.caseCount} cases</div>
+                    </div>
+                    <div className="row">
+                      <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value)}>
+                        <option value="" disabled>Assign user to customer…</option>
+                        {managerUsers.map((u) => (
+                          <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {tab === "manager" && (
             <div className="cases-wrap">
               <div className="row between">
@@ -519,7 +581,7 @@ export default function App() {
                 ))}
               </div>
 
-              {user?.role === "admin" && (
+              {(user?.role === "admin" || user?.role === "dev_admin") && (
                 <>
                   <h3>Account Types</h3>
                   <div className="muted">Assign roles/account types for platform users.</div>
@@ -533,6 +595,7 @@ export default function App() {
                         <div className="row">
                           <select value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value)}>
                             <option value="admin">{roleLabel("admin")}</option>
+                            <option value="dev_admin">{roleLabel("dev_admin")}</option>
                             <option value="case_worker">{roleLabel("case_worker")}</option>
                             <option value="gal">{roleLabel("gal")}</option>
                             <option value="foster_parent">{roleLabel("foster_parent")}</option>

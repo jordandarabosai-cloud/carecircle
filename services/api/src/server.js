@@ -35,7 +35,7 @@ app.use((req, res, next) => {
 });
 
 const TIMELINE_TYPES = new Set(["note", "hearing", "visit", "status", "task"]);
-const VALID_ROLES = new Set(["foster_parent", "biological_parent", "case_worker", "gal", "admin"]);
+const VALID_ROLES = new Set(["foster_parent", "biological_parent", "case_worker", "gal", "admin", "dev_admin"]);
 const DOCUMENT_VISIBILITY = new Set(["all", "professionals_only", "parents_only"]);
 const TASK_STATUSES = new Set(["open", "in_progress", "done", "blocked"]);
 
@@ -285,7 +285,7 @@ app.get("/cases", async (req, res) => {
   res.json({ cases });
 });
 
-app.get("/management/cases", requireRole("admin", "case_worker"), async (req, res) => {
+app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
   const result = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by,
             u.full_name AS primary_case_worker_name,
@@ -316,7 +316,7 @@ app.get("/management/cases", requireRole("admin", "case_worker"), async (req, re
   return res.json({ cases });
 });
 
-app.get("/management/caseworkers", requireRole("admin", "case_worker"), async (req, res) => {
+app.get("/management/caseworkers", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
   const result = await query(
     `SELECT u.id, u.full_name, u.email,
             COUNT(cm.case_id)::int AS assigned_case_count
@@ -337,7 +337,7 @@ app.get("/management/caseworkers", requireRole("admin", "case_worker"), async (r
   return res.json({ caseworkers });
 });
 
-app.get("/management/users", requireRole("admin"), async (_req, res) => {
+app.get("/management/users", requireRole("admin", "dev_admin"), async (_req, res) => {
   const result = await query(
     `SELECT id, email, full_name, role
      FROM users
@@ -354,7 +354,7 @@ app.get("/management/users", requireRole("admin"), async (_req, res) => {
   return res.json({ users, roles: Array.from(VALID_ROLES) });
 });
 
-app.patch("/management/users/:userId/role", requireRole("admin"), async (req, res) => {
+app.patch("/management/users/:userId/role", requireRole("admin", "dev_admin"), async (req, res) => {
   const { userId } = req.params;
   const { role } = req.body || {};
 
@@ -380,7 +380,59 @@ app.patch("/management/users/:userId/role", requireRole("admin"), async (req, re
   });
 });
 
-app.post("/management/cases/:caseId/assign", requireRole("admin", "case_worker"), async (req, res) => {
+app.get("/development/customers", requireRole("dev_admin"), async (_req, res) => {
+  const result = await query(
+    `SELECT c.id, c.name, c.created_at,
+            COUNT(cu.user_id)::int AS user_count,
+            COUNT(cs.id)::int AS case_count
+     FROM customers c
+     LEFT JOIN customer_users cu ON cu.customer_id = c.id
+     LEFT JOIN cases cs ON cs.customer_id = c.id
+     GROUP BY c.id, c.name, c.created_at
+     ORDER BY c.name ASC`
+  );
+
+  const customers = result.rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    createdAt: r.created_at,
+    userCount: r.user_count,
+    caseCount: r.case_count,
+  }));
+
+  return res.json({ customers });
+});
+
+app.post("/development/customers/:customerId/users/assign", requireRole("dev_admin"), async (req, res) => {
+  const { customerId } = req.params;
+  const { userId, membershipRole } = req.body || {};
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+
+  const allowedMembership = new Set(["owner", "admin", "member"]);
+  const safeMembership = allowedMembership.has(membershipRole) ? membershipRole : "member";
+
+  const customer = await query("SELECT id, name FROM customers WHERE id = $1 LIMIT 1", [customerId]);
+  if (!customer.rowCount) return res.status(404).json({ error: "Customer not found" });
+
+  const user = await query("SELECT id, email, full_name FROM users WHERE id = $1 LIMIT 1", [userId]);
+  if (!user.rowCount) return res.status(404).json({ error: "User not found" });
+
+  await query(
+    `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
+    [randomUUID(), customerId, userId, safeMembership]
+  );
+
+  return res.status(201).json({
+    assigned: true,
+    customerId,
+    userId,
+    membershipRole: safeMembership,
+  });
+});
+
+app.post("/management/cases/:caseId/assign", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
   const { caseId } = req.params;
   const { caseWorkerUserId } = req.body || {};
   if (!caseWorkerUserId) return res.status(400).json({ error: "caseWorkerUserId is required" });

@@ -4,6 +4,7 @@ const roleRank = {
   gal: 2,
   case_worker: 3,
   admin: 4,
+  dev_admin: 5,
 };
 
 export function requireRole(...roles) {

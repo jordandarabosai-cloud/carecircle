@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 
+const defaultCustomer = {
+  id: "7f11c950-d2ab-4d4e-b9f6-9ec1050a77a1",
+  name: "Demo County DFCS",
+};
+
 export const seedUsers = [
   {
     id: "9af0f5f6-2e42-4db0-a49d-9439f8f7be11",
@@ -31,6 +36,12 @@ export const seedUsers = [
     fullName: "GAL Jordan",
     role: "gal",
   },
+  {
+    id: "3df9f3f9-d4fd-4f2f-b773-8fe32e9b5f71",
+    email: "devadmin@carecircle.dev",
+    fullName: "Dev Admin Riley",
+    role: "dev_admin",
+  },
 ];
 
 const workerId = "c3577a4f-8f7d-4a87-95ad-458cf7fd3c63";
@@ -60,6 +71,13 @@ const seedTasks = [
 ];
 
 export async function ensureSeedData(query) {
+  await query(
+    `INSERT INTO customers(id, name)
+     VALUES ($1,$2)
+     ON CONFLICT(id) DO UPDATE SET name = EXCLUDED.name`,
+    [defaultCustomer.id, defaultCustomer.name]
+  );
+
   for (const u of seedUsers) {
     await query(
       `INSERT INTO users(id, email, full_name, role)
@@ -67,17 +85,24 @@ export async function ensureSeedData(query) {
        ON CONFLICT(email) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role`,
       [u.id, u.email, u.fullName, u.role]
     );
+
+    await query(
+      `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
+      [randomUUID(), defaultCustomer.id, u.id, u.role === "admin" || u.role === "dev_admin" ? "owner" : "member"]
+    );
   }
 
   for (const c of seedCases) {
     await query(
-      `INSERT INTO cases(id, title, created_by)
-       VALUES ($1,$2,$3)
-       ON CONFLICT(id) DO UPDATE SET title = EXCLUDED.title`,
-      [c.id, c.title, c.createdBy]
+      `INSERT INTO cases(id, title, created_by, customer_id)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT(id) DO UPDATE SET title = EXCLUDED.title, customer_id = EXCLUDED.customer_id`,
+      [c.id, c.title, c.createdBy, defaultCustomer.id]
     );
 
-    for (const u of seedUsers.filter((x) => x.role !== "admin")) {
+    for (const u of seedUsers.filter((x) => x.role !== "admin" && x.role !== "dev_admin")) {
       await query(
         `INSERT INTO case_members(id, case_id, user_id, role)
          VALUES ($1,$2,$3,$4)

@@ -1,4 +1,4 @@
-export type Role = "foster_parent" | "biological_parent" | "case_worker" | "gal" | "admin";
+export type Role = "foster_parent" | "biological_parent" | "case_worker" | "gal" | "admin" | "dev_admin";
 
 export type TimelineEventType = "note" | "hearing" | "visit" | "status" | "task";
 
