@@ -716,7 +716,7 @@ app.get("/cases/:caseId/documents", async (req, res) => {
   if (!memberRole) return res.status(403).json({ error: "Not allowed for this case" });
 
   const result = await query(
-    `SELECT id, case_id, uploaded_by, name, url, visibility, created_at
+    `SELECT id, case_id, uploaded_by, name, url, visibility, category, created_at
      FROM case_documents
      WHERE case_id = $1
      ORDER BY created_at DESC`,
@@ -732,6 +732,7 @@ app.get("/cases/:caseId/documents", async (req, res) => {
       name: r.name,
       url: r.url,
       visibility: r.visibility,
+      category: r.category,
       createdAt: r.created_at,
     }));
 
@@ -768,22 +769,25 @@ app.post("/cases/:caseId/documents", async (req, res) => {
     return res.status(403).json({ error: "Not allowed for this case" });
   }
 
-  const { name, url, visibility } = req.body || {};
+  const { name, url, visibility, category } = req.body || {};
   if (!name || !String(name).trim()) return res.status(400).json({ error: "name is required" });
   if (!url || !String(url).trim()) return res.status(400).json({ error: "url is required" });
   if (!DOCUMENT_VISIBILITY.has(visibility)) {
     return res.status(400).json({ error: "visibility must be one of: all, professionals_only, parents_only" });
   }
 
+  const allowedCategories = new Set(["general", "school", "medical", "court", "visits"]);
+  const safeCategory = allowedCategories.has(category) ? category : "general";
+
   const inserted = await query(
-    `INSERT INTO case_documents(id, case_id, uploaded_by, name, url, visibility)
-     VALUES ($1,$2,$3,$4,$5,$6)
-     RETURNING id, case_id, uploaded_by, name, url, visibility, created_at`,
-    [randomUUID(), caseId, req.auth.userId, String(name).trim(), String(url).trim(), visibility]
+    `INSERT INTO case_documents(id, case_id, uploaded_by, name, url, visibility, category)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     RETURNING id, case_id, uploaded_by, name, url, visibility, category, created_at`,
+    [randomUUID(), caseId, req.auth.userId, String(name).trim(), String(url).trim(), visibility, safeCategory]
   );
 
   const d = inserted.rows[0];
-  await req.audit({ caseId, action: "document.create", resourceType: "case", resourceId: caseId, meta: { documentId: d.id, visibility: d.visibility } });
+  await req.audit({ caseId, action: "document.create", resourceType: "case", resourceId: caseId, meta: { documentId: d.id, visibility: d.visibility, category: d.category } });
 
   return res.status(201).json({
     document: {
@@ -793,6 +797,7 @@ app.post("/cases/:caseId/documents", async (req, res) => {
       name: d.name,
       url: d.url,
       visibility: d.visibility,
+      category: d.category,
       createdAt: d.created_at,
     },
   });

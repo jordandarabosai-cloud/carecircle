@@ -62,6 +62,7 @@ export default function App() {
   const [inviteRole, setInviteRole] = useState("biological_parent");
   const [docName, setDocName] = useState("");
   const [docVisibility, setDocVisibility] = useState("all");
+  const [docCategory, setDocCategory] = useState("general");
   const [docFile, setDocFile] = useState(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
@@ -324,8 +325,8 @@ export default function App() {
       const upload = presign.upload;
       const uploadRes = await fetch(upload.uploadUrl, { method: upload.method || "PUT", headers: upload.headers || { "Content-Type": docFile.type || "application/octet-stream" }, body: docFile });
       if (!uploadRes.ok) throw new Error(`Upload failed (${uploadRes.status})`);
-      await apiRequest({ baseUrl: apiBase, path: `/cases/${caseId}/documents`, method: "POST", token, body: { name, url: upload.fileUrl, visibility: docVisibility } });
-      setDocName(""); setDocFile(null);
+      await apiRequest({ baseUrl: apiBase, path: `/cases/${caseId}/documents`, method: "POST", token, body: { name, url: upload.fileUrl, visibility: docVisibility, category: docCategory } });
+      setDocName(""); setDocFile(null); setDocCategory("general");
       await refreshCaseData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
@@ -407,7 +408,7 @@ export default function App() {
           {tab === "parent_home" && (
             <div className="overview-grid">
               <div>
-                <h3>Upcoming</h3>
+                <h3>What’s Next</h3>
                 {upcomingItems.length === 0 ? <div className="muted">No upcoming items yet.</div> : null}
                 {upcomingItems.map((ev) => (
                   <div key={ev.id} className="item">
@@ -420,6 +421,26 @@ export default function App() {
                 <h3>Recent Messages</h3>
                 {messages.slice(0, 6).map((m) => <div key={m.id} className="item">{m.body}</div>)}
                 {messages.length === 0 ? <div className="muted">No messages yet.</div> : null}
+              </div>
+              <div>
+                <h3>Documents by Category</h3>
+                {[
+                  "school",
+                  "medical",
+                  "court",
+                  "visits",
+                  "general",
+                ].map((cat) => {
+                  const docs = documents.filter((d) => (d.category || "general") === cat);
+                  if (!docs.length) return null;
+                  return (
+                    <div key={cat} className="item">
+                      <div className="case-title">{cat}</div>
+                      <div className="muted">{docs.length} document{docs.length > 1 ? "s" : ""}</div>
+                    </div>
+                  );
+                })}
+                {documents.length === 0 ? <div className="muted">No documents uploaded yet.</div> : null}
               </div>
             </div>
           )}
@@ -562,10 +583,17 @@ export default function App() {
                   <option value="professionals_only">professionals_only</option>
                   <option value="parents_only">parents_only</option>
                 </select>
+                <select value={docCategory} onChange={(e) => setDocCategory(e.target.value)}>
+                  <option value="general">general</option>
+                  <option value="school">school</option>
+                  <option value="medical">medical</option>
+                  <option value="court">court</option>
+                  <option value="visits">visits</option>
+                </select>
                 <input type="file" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
                 <button onClick={uploadDocument}>Upload</button>
               </div>
-              {documents.map((d) => <div key={d.id} className="item"><div>{d.name}</div><div className="muted">{d.url}</div></div>)}
+              {documents.map((d) => <div key={d.id} className="item"><div>{d.name}</div><div className="muted">{d.category || "general"} • {d.url}</div></div>)}
             </>
           )}
 
