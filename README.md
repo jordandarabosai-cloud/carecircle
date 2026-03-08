@@ -68,6 +68,16 @@ npm run test:api
 Expected output includes:
 - `INTEGRATION_TESTS=PASS`
 
+### S3 end-to-end check
+(Requires S3 env vars and `STORAGE_MODE=s3` context in script)
+
+```bash
+npm run test:s3
+```
+
+Expected output includes:
+- `S3_E2E=PASS`
+
 ### API spec
 - OpenAPI file: `services/api/openapi.json`
 

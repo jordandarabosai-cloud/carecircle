@@ -29,6 +29,7 @@ Storage vars:
 ## 3) Smoke tests
 - Run: `./scripts/smoke-test.ps1`
 - Run: `npm run test:api`
+- For S3-backed verification: `npm run test:s3`
 
 ## 4) Security notes
 - Keep `ALLOW_DEV_LOGIN=false` in deployed environments.
