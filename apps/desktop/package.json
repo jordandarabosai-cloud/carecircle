@@ -4,6 +4,27 @@
   "private": true,
   "main": "main.js",
   "scripts": {
-    "dev": "echo \"Electron shell scaffolded. Install Electron and run: npx electron .\""
+    "dev": "electron .",
+    "start": "electron .",
+    "pack:mac": "electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ai.carecircle.desktop",
+    "productName": "CareCircle",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "styles.css"
+    ],
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.medical"
+    }
   }
 }

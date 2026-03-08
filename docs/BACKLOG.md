@@ -17,4 +17,5 @@
 4. ✅ Add tasks/expectations domain (DB + endpoints)
 5. ✅ Add OTP-style auth scaffold (`/auth/request-code`, `/auth/verify-code`) with rate limiting/lockout + delivery adapter (`dev`/`log`/`smtp`)
 6. ✅ Mobile app MVP client wired (OTP auth, case/timeline/tasks/messages/documents views)
-7. Next: production delivery integration (email provider), richer role-specific UI polish, and desktop parity
+7. ✅ Desktop macOS-ready MVP client wired (Electron auth/case/timeline/tasks/messages/documents/invites)
+8. Next: production delivery integration (email provider), richer role-specific UI polish, and native desktop packaging validation on macOS

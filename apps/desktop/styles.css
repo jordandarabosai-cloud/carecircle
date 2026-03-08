@@ -1,0 +1,16 @@
+body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #0b1020; color: #d8def0; }
+.app { padding: 16px; display: grid; gap: 12px; }
+.card { background: #161d35; border: 1px solid #2a3358; border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+input, button { border-radius: 8px; border: 1px solid #425089; padding: 8px 10px; background: #0f1530; color: #fff; }
+button { background: #4463ff; cursor: pointer; border: none; }
+button.secondary { background: #2a3358; }
+button.tab { background: transparent; border: 1px solid #425089; }
+button.tab.active { background: #27315d; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.item { background: #0f1530; border: 1px solid #2a3358; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.muted { color: #9fb0ff; }
+.hidden { display: none; }
+h1 { margin: 0; font-size: 22px; }
+h3 { margin: 0; }

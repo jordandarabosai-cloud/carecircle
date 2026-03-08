@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CareCircle Desktop</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>CareCircle Desktop</h1>
+        <div class="muted" id="platform"></div>
+      </header>
+
+      <section class="card">
+        <label>API Base URL</label>
+        <input id="apiBase" value="http://localhost:4010" />
+      </section>
+
+      <section class="card" id="authCard">
+        <h3>Sign in (OTP)</h3>
+        <input id="email" value="worker@carecircle.dev" placeholder="email" />
+        <div class="row">
+          <button id="requestCodeBtn">Request code</button>
+          <input id="code" placeholder="code" />
+          <button id="verifyBtn">Verify</button>
+        </div>
+        <div class="muted" id="authHint"></div>
+      </section>
+
+      <section class="card hidden" id="sessionCard">
+        <div class="row between">
+          <div id="sessionText"></div>
+          <div class="row">
+            <button id="refreshCasesBtn">Refresh cases</button>
+            <button id="signOutBtn" class="secondary">Sign out</button>
+          </div>
+        </div>
+        <div class="row" id="caseButtons"></div>
+      </section>
+
+      <section class="card hidden" id="workspaceCard">
+        <div class="tabs" id="tabs"></div>
+        <div class="row" id="composerRow">
+          <input id="composeInput" placeholder="Write update..." />
+          <button id="postBtn">Post</button>
+        </div>
+        <div id="content"></div>
+      </section>
+
+      <div id="status" class="muted"></div>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
