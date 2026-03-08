@@ -21,9 +21,10 @@ For signed/notarized builds, configure these repository secrets:
 
 ## Runbook
 1. Add/update secrets in GitHub repo settings.
-2. Run workflow manually (`Actions` → `desktop-macos` → `Run workflow`) or push desktop changes.
-3. Download artifacts from the workflow run.
-4. Validate install on a clean macOS account.
+2. Follow `docs/GITHUB_SECRETS_SETUP.md` for exact `CSC_LINK` formatting and checks.
+3. Run workflow manually (`Actions` → `desktop-macos` → `Run workflow`) or push desktop changes.
+4. Download artifacts from the workflow run.
+5. Validate install on a clean macOS account.
 
 ## Notes
 - Workflow also runs `npm run test:api` before packaging.

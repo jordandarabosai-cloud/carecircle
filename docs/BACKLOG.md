@@ -20,4 +20,5 @@
 7. ✅ Desktop macOS-ready MVP client wired (Electron auth/case/timeline/tasks/messages/documents/invites)
 8. ✅ Native desktop packaging validation scaffolding on macOS (check script, entitlements, notarization hook, release checklist)
 9. ✅ Added GitHub Actions macOS desktop build workflow + CI docs
-10. Next: configure Apple signing/notarization secrets and validate first signed artifact run
+10. ✅ Added GitHub secrets setup guide (`docs/GITHUB_SECRETS_SETUP.md`) for first signed run
+11. Next: execute first signed/notarized GitHub Actions run and verify installed artifact on clean macOS
