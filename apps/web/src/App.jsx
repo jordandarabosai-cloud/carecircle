@@ -28,6 +28,16 @@ const baseTabs = [
   ["invites", "Invites"],
 ];
 
+const parentTabs = [
+  ["parent_home", "Home"],
+  ["messages", "Messages"],
+  ["calendar", "Calendar"],
+  ["documents", "Documents"],
+  ["tasks", "Tasks"],
+  ["timeline", "Timeline"],
+  ["cases", "Cases"],
+];
+
 export default function App() {
   const [apiBase, setApiBase] = useState(() => localStorage.getItem("cc_api_base") || defaultApiBase);
   const [email, setEmail] = useState("worker@carecircle.dev");
@@ -76,10 +86,9 @@ export default function App() {
     const canManage = role === "admin" || role === "case_worker";
     const isParent = role === "biological_parent" || role === "foster_parent";
 
+    if (isParent) return parentTabs;
+
     let list = [...baseTabs];
-    if (isParent) {
-      list = list.filter(([k]) => k !== "invites");
-    }
     if (canManage) list = [["manager", "Manager"], ...list];
     return list;
   }, [user?.role]);
@@ -138,6 +147,14 @@ export default function App() {
     });
   }, [calendarEvents, selectedDayKey]);
 
+  const upcomingItems = useMemo(() => {
+    const now = new Date();
+    return [...calendarEvents]
+      .filter((ev) => ev.date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+      .sort((a, b) => a.date - b.date)
+      .slice(0, 6);
+  }, [calendarEvents]);
+
   useEffect(() => localStorage.setItem("cc_api_base", apiBase), [apiBase]);
   useEffect(() => token ? localStorage.setItem("cc_token", token) : localStorage.removeItem("cc_token"), [token]);
   useEffect(() => user ? localStorage.setItem("cc_user", JSON.stringify(user)) : localStorage.removeItem("cc_user"), [user]);
@@ -157,6 +174,11 @@ export default function App() {
       setTab(tabs[0]?.[0] || "overview");
     }
   }, [tabs, tab]);
+
+  useEffect(() => {
+    const isParent = user?.role === "biological_parent" || user?.role === "foster_parent";
+    if (isParent && tab !== "parent_home") setTab("parent_home");
+  }, [user?.role]);
 
   useEffect(() => {
     if (tab === "calendar" && calendarScope === "all" && token) {
@@ -379,6 +401,26 @@ export default function App() {
             <div className="composer row">
               <input value={compose} onChange={(e) => setCompose(e.target.value)} placeholder={tab === "tasks" ? "Create a task…" : "Write an update…"} />
               <button onClick={quickPost}>Post</button>
+            </div>
+          )}
+
+          {tab === "parent_home" && (
+            <div className="overview-grid">
+              <div>
+                <h3>Upcoming</h3>
+                {upcomingItems.length === 0 ? <div className="muted">No upcoming items yet.</div> : null}
+                {upcomingItems.map((ev) => (
+                  <div key={ev.id} className="item">
+                    <div>{ev.label}</div>
+                    <div className="muted">{ev.date.toLocaleDateString()} • {ev.type}</div>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <h3>Recent Messages</h3>
+                {messages.slice(0, 6).map((m) => <div key={m.id} className="item">{m.body}</div>)}
+                {messages.length === 0 ? <div className="muted">No messages yet.</div> : null}
+              </div>
             </div>
           )}
 
