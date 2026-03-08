@@ -232,6 +232,17 @@ app.post("/invites/accept", async (req, res) => {
     [randomUUID(), invite.case_id, user.id, invite.role]
   );
 
+  const caseCustomer = await query("SELECT customer_id FROM cases WHERE id = $1 LIMIT 1", [invite.case_id]);
+  const customerId = caseCustomer.rows[0]?.customer_id || null;
+  if (customerId) {
+    await query(
+      `INSERT INTO customer_users(id, customer_id, user_id, membership_role)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT(customer_id,user_id) DO UPDATE SET membership_role = EXCLUDED.membership_role`,
+      [randomUUID(), customerId, user.id, "member"]
+    );
+  }
+
   await query(
     `UPDATE case_invites
      SET status='accepted', accepted_by=$2, accepted_at=NOW()
@@ -268,16 +279,54 @@ app.post("/invites/accept", async (req, res) => {
 app.use(requireAuth);
 app.use(attachAudit);
 
+app.use(async (req, _res, next) => {
+  if (!req.auth?.userId) return next();
+
+  const result = await query(
+    `SELECT customer_id, membership_role
+     FROM customer_users
+     WHERE user_id = $1
+     ORDER BY created_at ASC`,
+    [req.auth.userId]
+  );
+
+  req.auth.customerIds = result.rows.map((r) => r.customer_id).filter(Boolean);
+  req.auth.customerMemberships = result.rows;
+
+  next();
+});
+
+function canBypassCustomerScope(req) {
+  return req.auth?.role === "dev_admin";
+}
+
+function hasCustomerScope(req) {
+  return canBypassCustomerScope(req) || (req.auth?.customerIds?.length || 0) > 0;
+}
+
+function inCustomerScope(req, customerId) {
+  if (canBypassCustomerScope(req)) return true;
+  return (req.auth?.customerIds || []).includes(customerId);
+}
+
+async function caseCustomerId(caseId) {
+  const result = await query(`SELECT customer_id FROM cases WHERE id = $1 LIMIT 1`, [caseId]);
+  return result.rows[0]?.customer_id || null;
+}
+
 app.get("/me", (req, res) => res.json({ user: req.auth }));
 
 app.get("/cases", async (req, res) => {
+  if (!hasCustomerScope(req)) return res.json({ cases: [] });
+
   const caseRows = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by
      FROM cases c
      INNER JOIN case_members cm ON cm.case_id = c.id
      WHERE cm.user_id = $1
+       AND ($2::bool OR c.customer_id = ANY($3::uuid[]))
      ORDER BY c.created_at DESC`,
-    [req.auth.userId]
+    [req.auth.userId, canBypassCustomerScope(req), req.auth.customerIds || []]
   );
 
   const cases = caseRows.rows.map((r) => ({ id: r.id, title: r.title, createdAt: r.created_at, createdBy: r.created_by }));
@@ -286,6 +335,8 @@ app.get("/cases", async (req, res) => {
 });
 
 app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
+  if (!hasCustomerScope(req)) return res.json({ cases: [] });
+
   const result = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by,
             u.full_name AS primary_case_worker_name,
@@ -300,7 +351,9 @@ app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), a
        LIMIT 1
      ) cw ON true
      LEFT JOIN users u ON u.id = cw.user_id
-     ORDER BY c.created_at DESC`
+     WHERE ($1::bool OR c.customer_id = ANY($2::uuid[]))
+     ORDER BY c.created_at DESC`,
+    [canBypassCustomerScope(req), req.auth.customerIds || []]
   );
 
   const cases = result.rows.map((r) => ({
@@ -337,11 +390,14 @@ app.get("/management/caseworkers", requireRole("admin", "case_worker", "dev_admi
   return res.json({ caseworkers });
 });
 
-app.get("/management/users", requireRole("admin", "dev_admin"), async (_req, res) => {
+app.get("/management/users", requireRole("admin", "dev_admin"), async (req, res) => {
   const result = await query(
-    `SELECT id, email, full_name, role
-     FROM users
-     ORDER BY full_name ASC`
+    `SELECT DISTINCT u.id, u.email, u.full_name, u.role
+     FROM users u
+     LEFT JOIN customer_users cu ON cu.user_id = u.id
+     WHERE ($1::bool OR cu.customer_id = ANY($2::uuid[]))
+     ORDER BY u.full_name ASC`,
+    [canBypassCustomerScope(req), req.auth.customerIds || []]
   );
 
   const users = result.rows.map((r) => ({
@@ -466,15 +522,27 @@ app.post("/management/cases/:caseId/assign", requireRole("admin", "case_worker",
   return res.status(201).json({ assigned: true, caseId, caseWorkerUserId, caseWorkerName: worker.full_name });
 });
 
-app.post("/cases", requireRole("admin", "case_worker"), async (req, res) => {
-  const { title } = req.body || {};
+app.post("/cases", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
+  const { title, customerId } = req.body || {};
   if (!title || !title.trim()) return res.status(400).json({ error: "title is required" });
 
+  const effectiveCustomerId = canBypassCustomerScope(req)
+    ? (customerId || req.auth.customerIds?.[0] || null)
+    : (req.auth.customerIds?.[0] || null);
+
+  if (!effectiveCustomerId) {
+    return res.status(400).json({ error: "No customer scope available for this user" });
+  }
+
+  if (!inCustomerScope(req, effectiveCustomerId)) {
+    return res.status(403).json({ error: "Customer scope violation" });
+  }
+
   const createResult = await query(
-    `INSERT INTO cases(id, title, created_by)
-     VALUES ($1,$2,$3)
+    `INSERT INTO cases(id, title, created_by, customer_id)
+     VALUES ($1,$2,$3,$4)
      RETURNING id, title, created_at, created_by`,
-    [randomUUID(), title.trim(), req.auth.userId]
+    [randomUUID(), title.trim(), req.auth.userId, effectiveCustomerId]
   );
 
   const record = createResult.rows[0];
@@ -499,9 +567,12 @@ app.post("/cases", requireRole("admin", "case_worker"), async (req, res) => {
   });
 });
 
-app.post("/cases/:caseId/members", requireRole("admin", "case_worker"), async (req, res) => {
+app.post("/cases/:caseId/members", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
   const { caseId } = req.params;
-  const canManage = req.auth.role === "admin" || (await canAccessCase(query, req.auth.userId, caseId));
+  const customerId = await caseCustomerId(caseId);
+  if (!customerId || !inCustomerScope(req, customerId)) return res.status(403).json({ error: "Customer scope violation" });
+
+  const canManage = req.auth.role === "admin" || req.auth.role === "dev_admin" || (await canAccessCase(query, req.auth.userId, caseId));
   if (!canManage) return res.status(403).json({ error: "Cannot manage members for this case" });
 
   const { userId, role } = req.body || {};
@@ -525,9 +596,12 @@ app.post("/cases/:caseId/members", requireRole("admin", "case_worker"), async (r
   });
 });
 
-app.get("/cases/:caseId/invites", requireRole("admin", "case_worker", "gal"), async (req, res) => {
+app.get("/cases/:caseId/invites", requireRole("admin", "case_worker", "gal", "dev_admin"), async (req, res) => {
   const { caseId } = req.params;
-  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+  const customerId = await caseCustomerId(caseId);
+  if (!customerId || !inCustomerScope(req, customerId)) return res.status(403).json({ error: "Customer scope violation" });
+
+  if (req.auth.role !== "admin" && req.auth.role !== "dev_admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
     return res.status(403).json({ error: "Not allowed for this case" });
   }
 
@@ -605,7 +679,10 @@ app.post("/cases/:caseId/invites", requireRole("admin", "case_worker"), async (r
 
 app.get("/cases/:caseId/tasks", async (req, res) => {
   const { caseId } = req.params;
-  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+  const customerId = await caseCustomerId(caseId);
+  if (!customerId || !inCustomerScope(req, customerId)) return res.status(403).json({ error: "Customer scope violation" });
+
+  if (req.auth.role !== "admin" && req.auth.role !== "dev_admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
     return res.status(403).json({ error: "Not allowed for this case" });
   }
 
@@ -758,7 +835,10 @@ app.patch("/cases/:caseId/tasks/:taskId", async (req, res) => {
 
 app.get("/cases/:caseId/messages", async (req, res) => {
   const { caseId } = req.params;
-  if (req.auth.role !== "admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
+  const customerId = await caseCustomerId(caseId);
+  if (!customerId || !inCustomerScope(req, customerId)) return res.status(403).json({ error: "Customer scope violation" });
+
+  if (req.auth.role !== "admin" && req.auth.role !== "dev_admin" && !(await canAccessCase(query, req.auth.userId, caseId))) {
     return res.status(403).json({ error: "Not allowed for this case" });
   }
 
@@ -807,7 +887,10 @@ app.post("/cases/:caseId/messages", async (req, res) => {
 
 app.get("/cases/:caseId/documents", async (req, res) => {
   const { caseId } = req.params;
-  const memberRole = req.auth.role === "admin" ? "admin" : await caseRole(query, req.auth.userId, caseId);
+  const customerId = await caseCustomerId(caseId);
+  if (!customerId || !inCustomerScope(req, customerId)) return res.status(403).json({ error: "Customer scope violation" });
+
+  const memberRole = (req.auth.role === "admin" || req.auth.role === "dev_admin") ? "admin" : await caseRole(query, req.auth.userId, caseId);
   if (!memberRole) return res.status(403).json({ error: "Not allowed for this case" });
 
   const result = await query(
