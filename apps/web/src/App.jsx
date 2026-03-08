@@ -277,6 +277,12 @@ export default function App() {
           </div>
         </header>
 
+        <section className="case-context card">
+          <div className="case-pill-label">Current Case</div>
+          <div className="case-pill-main">{selectedCase?.title || "No case selected"}</div>
+          <div className="case-pill-sub">{selectedCase?.id || "—"}</div>
+        </section>
+
         <section className="stats-grid">
           <div className="card stat"><div className="muted">Open Tasks</div><div className="stat-value">{openTasks}</div></div>
           <div className="card stat"><div className="muted">Completed Tasks</div><div className="stat-value">{doneTasks}</div></div>
