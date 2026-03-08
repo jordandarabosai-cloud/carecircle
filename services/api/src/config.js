@@ -19,6 +19,7 @@ export function loadConfig() {
     s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
     s3Endpoint: process.env.S3_ENDPOINT || "",
     s3ForcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
+    allowedOrigins: (process.env.ALLOWED_ORIGINS || "").split(",").map((x) => x.trim()).filter(Boolean),
   };
 
   const validModes = new Set(["dev", "log", "smtp"]);

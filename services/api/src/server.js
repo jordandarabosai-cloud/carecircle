@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { signUserToken, requireAuth } from "./auth.js";
@@ -13,6 +14,19 @@ import { createUploadTarget, saveLocalUpload } from "./storage.js";
 const config = loadConfig();
 
 const app = express();
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (!config.allowedOrigins.length) return callback(null, true);
+      if (config.allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Origin not allowed by CORS"));
+    },
+    credentials: false,
+  })
+);
+
 app.use(express.json());
 app.use((req, res, next) => {
   req.requestId = randomUUID();
@@ -786,6 +800,13 @@ app.get("/cases/:caseId/audit", async (req, res) => {
   }));
 
   return res.json({ caseId, events });
+});
+
+app.use((err, req, res, next) => {
+  if (err && String(err.message || "").includes("CORS")) {
+    return res.status(403).json({ error: "CORS blocked for origin", requestId: req?.requestId || null });
+  }
+  return next(err);
 });
 
 app.use((req, res) => {

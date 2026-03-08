@@ -143,3 +143,8 @@ Auth hardening added:
 
 ## Status
 MVP scaffold implemented for core auth + role-aware case timeline flow with Postgres-backed persistence.
+
+## Web production note
+Set API CORS allowlist in backend env:
+- `ALLOWED_ORIGINS=https://carecircle.darabostech.com`
+(you can include multiple comma-separated origins)
