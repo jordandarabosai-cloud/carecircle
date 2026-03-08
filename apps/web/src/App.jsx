@@ -38,6 +38,12 @@ const parentTabs = [
   ["cases", "Cases"],
 ];
 
+const devAdminTabs = [
+  ["dev_overview", "Overview"],
+  ["dev_organizations", "Organizations"],
+  ["dev_users", "Users"],
+];
+
 const DOC_CATEGORY_META = {
   all: { label: "All", icon: "🗂️" },
   school: { label: "School", icon: "🏫" },
@@ -134,11 +140,11 @@ export default function App() {
     const canManage = role === "admin" || role === "case_worker" || role === "dev_admin";
     const isParent = role === "biological_parent" || role === "foster_parent";
 
+    if (role === "dev_admin") return devAdminTabs;
     if (isParent) return parentTabs;
 
     let list = [...baseTabs];
     if (canManage) list = [["manager", "Manager"], ...list];
-    if (role === "dev_admin") list = [["development", "Development"], ...list];
     return list;
   }, [user?.role]);
 
@@ -250,7 +256,7 @@ export default function App() {
     if (tab === "manager" && token) {
       loadManagerData();
     }
-    if (tab === "development" && token) {
+    if (tab.startsWith("dev_") && token) {
       loadDevelopmentData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,7 +264,7 @@ export default function App() {
 
   useEffect(() => {
     async function run() {
-      if (tab !== "development" || !token || !devSelectedOrgId) return;
+      if (!tab.startsWith("dev_") || !token || !devSelectedOrgId) return;
       try {
         const out = await apiRequest({ baseUrl: apiBase, path: `/development/organizations/${devSelectedOrgId}/users`, token });
         setDevOrgUsers(out.users || []);
@@ -578,13 +584,15 @@ export default function App() {
           <div className="muted">{roleLabel(user?.role)}</div>
         </div>
 
-        <div className="sidebar-section">
-          <label className="sidebar-label">Current Case</label>
-          <select value={caseId} onChange={(e) => setCaseId(e.target.value)}>
-            {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-          </select>
-          <button className="secondary" onClick={() => refreshCases()}>Refresh Cases</button>
-        </div>
+        {user?.role !== "dev_admin" && (
+          <div className="sidebar-section">
+            <label className="sidebar-label">Current Case</label>
+            <select value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+              {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+            <button className="secondary" onClick={() => refreshCases()}>Refresh Cases</button>
+          </div>
+        )}
 
         <div className="tab-list">
           {tabs.map(([k, label]) => (
@@ -658,13 +666,55 @@ export default function App() {
             </div>
           )}
 
-          {tab === "development" && (
+          {tab === "dev_overview" && (
             <div className="cases-wrap">
               <div className="row between">
-                <h3>Development Admin Console</h3>
-                <button className="secondary" onClick={loadDevelopmentData}>Refresh Dev Console</button>
+                <h3>Development Overview</h3>
+                <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
               </div>
-              <div className="muted">Assign users to organizations and set their organization-level role.</div>
+              <div className="item table-wrap">
+                <table className="cases-table">
+                  <thead>
+                    <tr>
+                      <th>Case</th>
+                      <th>Organization</th>
+                      <th>Primary Worker</th>
+                      <th>Assign Organization</th>
+                      <th>Assign User</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {devCasesSorted.map((c) => (
+                      <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
+                        <td><div className="case-title">{c.title}</div><div className="muted">{c.id}</div></td>
+                        <td>{c.organizationName || "Unassigned"}</td>
+                        <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
+                        <td>
+                          <select defaultValue="" onChange={(e) => assignCaseToOrganization(c.id, e.target.value)}>
+                            <option value="" disabled>Assign…</option>
+                            {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select defaultValue="" onChange={(e) => assignCaseToUser(c.id, e.target.value, caseAssignRole)}>
+                            <option value="" disabled>Assign…</option>
+                            {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {tab === "dev_organizations" && (
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>Organizations</h3>
+                <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
+              </div>
 
               <div className="item">
                 <h3>Create Case (Platform)</h3>
@@ -684,15 +734,10 @@ export default function App() {
                 </div>
                 <div className="row">
                   <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
-                    <option value="low">low</option>
-                    <option value="normal">normal</option>
-                    <option value="high">high</option>
-                    <option value="urgent">urgent</option>
+                    <option value="low">low</option><option value="normal">normal</option><option value="high">high</option><option value="urgent">urgent</option>
                   </select>
                   <select value={newCaseStatus} onChange={(e) => setNewCaseStatus(e.target.value)}>
-                    <option value="open">open</option>
-                    <option value="active">active</option>
-                    <option value="closed">closed</option>
+                    <option value="open">open</option><option value="active">active</option><option value="closed">closed</option>
                   </select>
                 </div>
                 <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
@@ -701,99 +746,69 @@ export default function App() {
               <div className="row">
                 <label className="muted">Organization Role</label>
                 <select value={orgAssignRole} onChange={(e) => setOrgAssignRole(e.target.value)}>
-                  <option value="agency_admin">Agency Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="case_worker">Case Worker</option>
-                  <option value="foster_parent">Foster Parent</option>
-                  <option value="biological_parent">Biological Parent</option>
-                  <option value="gal">GAL / CASA</option>
-                  <option value="member">Member</option>
+                  <option value="agency_admin">Agency Admin</option><option value="manager">Manager</option><option value="case_worker">Case Worker</option>
+                  <option value="foster_parent">Foster Parent</option><option value="biological_parent">Biological Parent</option><option value="gal">GAL / CASA</option><option value="member">Member</option>
                 </select>
-
                 <label className="muted">Case Role</label>
                 <select value={caseAssignRole} onChange={(e) => setCaseAssignRole(e.target.value)}>
-                  <option value="case_worker">Case Worker</option>
-                  <option value="foster_parent">Foster Parent</option>
-                  <option value="biological_parent">Biological Parent</option>
-                  <option value="gal">GAL / CASA</option>
+                  <option value="case_worker">Case Worker</option><option value="foster_parent">Foster Parent</option><option value="biological_parent">Biological Parent</option><option value="gal">GAL / CASA</option>
                 </select>
               </div>
 
-              <div className="cases-grid">
-                {devCustomers.map((c) => (
-                  <div key={c.id} className={`item case-card ${devSelectedOrgId === c.id ? "active" : ""}`}>
-                    <div>
-                      <div className="case-title">{c.name}</div>
-                      <div className="muted">{c.userCount} users • {c.caseCount} cases</div>
-                    </div>
-                    <div className="row">
-                      <button className="secondary" onClick={() => setDevSelectedOrgId(c.id)}>View Members</button>
-                      <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value, orgAssignRole)}>
-                        <option value="" disabled>Assign user to organization…</option>
-                        {managerUsers.map((u) => (
-                          <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                ))}
+              <div className="item table-wrap">
+                <table className="cases-table">
+                  <thead><tr><th>Organization</th><th>Users</th><th>Cases</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {devCustomers.map((c) => (
+                      <tr key={c.id} className={devSelectedOrgId === c.id ? "row-selected" : ""}>
+                        <td><div className="case-title">{c.name}</div></td>
+                        <td>{c.userCount}</td>
+                        <td>{c.caseCount}</td>
+                        <td>
+                          <div className="row">
+                            <button className="secondary" onClick={() => setDevSelectedOrgId(c.id)}>View Members</button>
+                            <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value, orgAssignRole)}>
+                              <option value="" disabled>Assign user…</option>
+                              {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}
+                            </select>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               {devSelectedOrgId ? (
-                <>
+                <div className="item">
                   <h3>Organization Members</h3>
-                  <div className="item">
-                    {devOrgUsers.length === 0 ? <div className="muted">No members in this organization yet.</div> : null}
-                    {devOrgUsers.map((u) => (
-                      <div key={u.id} className="member-row">
-                        <div>
-                          <div className="case-title">{u.fullName}</div>
-                          <div className="muted">{u.email}</div>
-                        </div>
-                        <div className="muted">{roleLabel(u.globalRole)} • Org: {u.organizationRole}</div>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                  {devOrgUsers.length === 0 ? <div className="muted">No members in this organization yet.</div> : null}
+                  {devOrgUsers.map((u) => (
+                    <div key={u.id} className="member-row">
+                      <div><div className="case-title">{u.fullName}</div><div className="muted">{u.email}</div></div>
+                      <div className="muted">{roleLabel(u.globalRole)} • Org: {u.organizationRole}</div>
+                    </div>
+                  ))}
+                </div>
               ) : null}
+            </div>
+          )}
 
-              <h3>All Cases (Platform)</h3>
+          {tab === "dev_users" && (
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>Users</h3>
+                <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
+              </div>
               <div className="item table-wrap">
                 <table className="cases-table">
-                  <thead>
-                    <tr>
-                      <th>Case</th>
-                      <th>Organization</th>
-                      <th>Primary Worker</th>
-                      <th>Assign Organization</th>
-                      <th>Assign User</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Name</th><th>Email</th><th>Global Role</th></tr></thead>
                   <tbody>
-                    {devCasesSorted.map((c) => (
-                      <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
-                        <td>
-                          <div className="case-title">{c.title}</div>
-                          <div className="muted">{c.id}</div>
-                        </td>
-                        <td>{c.organizationName || "Unassigned"}</td>
-                        <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
-                        <td>
-                          <select defaultValue="" onChange={(e) => assignCaseToOrganization(c.id, e.target.value)}>
-                            <option value="" disabled>Assign…</option>
-                            {devCustomers.map((org) => (
-                              <option key={org.id} value={org.id}>{org.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select defaultValue="" onChange={(e) => assignCaseToUser(c.id, e.target.value, caseAssignRole)}>
-                            <option value="" disabled>Assign…</option>
-                            {managerUsers.map((u) => (
-                              <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>
-                            ))}
-                          </select>
-                        </td>
+                    {managerUsers.map((u) => (
+                      <tr key={u.id}>
+                        <td>{u.fullName}</td>
+                        <td>{u.email}</td>
+                        <td>{roleLabel(u.role)}</td>
                       </tr>
                     ))}
                   </tbody>
