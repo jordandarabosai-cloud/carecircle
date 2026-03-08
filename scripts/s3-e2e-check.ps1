@@ -9,7 +9,7 @@ if (-not $env:AUTH_CODE_DELIVERY_MODE) { $env:AUTH_CODE_DELIVERY_MODE = "dev" }
 if (-not $env:AUTH_RATE_LIMIT_BYPASS) { $env:AUTH_RATE_LIMIT_BYPASS = "true" }
 
 $required = @("S3_BUCKET", "S3_REGION", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY")
-$missing = $required | Where-Object { -not $env:$_ }
+$missing = $required | Where-Object { -not [Environment]::GetEnvironmentVariable($_) }
 if ($missing.Count -gt 0) {
   throw "Missing required env vars for S3 check: $($missing -join ', ')"
 }
