@@ -1201,11 +1201,18 @@ export default function App() {
                     <h3>Recent Timeline</h3>
                     {timeline.slice(0, 8).map((e) => <div key={e.id} className="item">[{e.type}] {e.text}</div>)}
                     {timeline.length === 0 ? <div className="muted">No timeline updates yet.</div> : null}
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button className="secondary" onClick={() => setTab("timeline")}>Open Timeline</button>
+                    </div>
                   </div>
                   <div className="item">
                     <h3>Tasks Needing Attention</h3>
                     {tasks.filter((t) => t.status !== "done").slice(0, 8).map((t) => <div key={t.id} className="item">{t.title} <span className="muted">({t.status})</span></div>)}
                     {tasks.filter((t) => t.status !== "done").length === 0 ? <div className="muted">No open tasks.</div> : null}
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button className="secondary" onClick={() => setTab("tasks")}>Open Tasks</button>
+                      <button className="secondary" onClick={() => setTab("messages")}>Open Messages</button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1265,7 +1272,7 @@ export default function App() {
               )}
 
               <div className="item table-wrap">
-                <h3>My Active Cases</h3>
+                <h3>{user?.role === "admin" ? "Platform Case Snapshot" : "My Active Cases"}</h3>
                 <table className="cases-table">
                   <thead>
                     <tr>
