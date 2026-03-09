@@ -1141,14 +1141,14 @@ export default function App() {
               {(user?.role === "admin" || user?.role === "case_worker") && (
                 <div className="overview-grid">
                   <div className="item">
-                    <h3>Case Assignment Queue</h3>
+                    <h3>{user?.role === "admin" ? "Case Assignment Queue" : "Unassigned Cases"}</h3>
                     {managerCases.filter((c) => !c.primaryCaseWorkerId).slice(0, 8).map((c) => (
                       <div key={c.id} className="member-row">
                         <div>
                           <div className="case-title">{c.title}</div>
                           <div className="muted">{c.primaryCaseWorkerName || "Unassigned"}</div>
                         </div>
-                        <button className="secondary" onClick={() => setTab("manager")}>Assign</button>
+                        <button className="secondary" onClick={() => setTab("manager")}>{user?.role === "admin" ? "Assign" : "Review"}</button>
                       </div>
                     ))}
                     {managerCases.filter((c) => !c.primaryCaseWorkerId).length === 0 ? <div className="muted">No unassigned cases.</div> : null}
@@ -1167,19 +1167,31 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="item">
-                    <h3>Worker Capacity</h3>
-                    {managerWorkers.slice().sort((a, b) => b.assignedCaseCount - a.assignedCaseCount).slice(0, 8).map((w) => (
-                      <div key={w.id} className="member-row">
-                        <div>
-                          <div className="case-title">{w.fullName}</div>
-                          <div className="muted">{w.email || roleLabel(w.role)}</div>
+                  {user?.role === "admin" ? (
+                    <div className="item">
+                      <h3>Worker Capacity</h3>
+                      {managerWorkers.slice().sort((a, b) => b.assignedCaseCount - a.assignedCaseCount).slice(0, 8).map((w) => (
+                        <div key={w.id} className="member-row">
+                          <div>
+                            <div className="case-title">{w.fullName}</div>
+                            <div className="muted">{w.email || roleLabel(w.role)}</div>
+                          </div>
+                          <div className="load-pill">{w.assignedCaseCount || 0} cases</div>
                         </div>
-                        <div className="load-pill">{w.assignedCaseCount || 0} cases</div>
+                      ))}
+                      {managerWorkers.length === 0 ? <div className="muted">No workers available.</div> : null}
+                    </div>
+                  ) : (
+                    <div className="item">
+                      <h3>My Focus</h3>
+                      <div className="member-row"><div>Open tasks</div><div className="load-pill">{openTasks}</div></div>
+                      <div className="member-row"><div>Assigned cases</div><div className="load-pill">{cases.length}</div></div>
+                      <div className="row" style={{ marginTop: 10 }}>
+                        <button className="secondary" onClick={() => setTab("tasks")}>Go to Tasks</button>
+                        <button className="secondary" onClick={() => setTab("messages")}>Go to Messages</button>
                       </div>
-                    ))}
-                    {managerWorkers.length === 0 ? <div className="muted">No workers available.</div> : null}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1211,11 +1223,17 @@ export default function App() {
                         </div>
                       </div>
                     ))}
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button className="secondary" onClick={() => setTab("calendar")}>Open Calendar</button>
+                    </div>
                   </div>
                   <div className="item">
                     <h3>Recent Messages</h3>
                     {messages.slice(0, 6).map((m) => <div key={m.id} className="item">{m.body}</div>)}
                     {messages.length === 0 ? <div className="muted">No messages yet.</div> : null}
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button className="secondary" onClick={() => setTab("messages")}>Open Messages</button>
+                    </div>
                   </div>
                   <div className="item">
                     <h3>Document Categories</h3>
