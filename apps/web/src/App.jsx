@@ -143,6 +143,8 @@ export default function App() {
   const [newCaseOrganizationId, setNewCaseOrganizationId] = useState("");
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
+  const isDevAdmin = user?.role === "dev_admin";
+
   const tabs = useMemo(() => {
     const role = user?.role;
     const canManage = role === "admin" || role === "case_worker" || role === "dev_admin";
@@ -656,18 +658,22 @@ export default function App() {
       </aside>
 
       <main className="main">
-        <section className="case-context card">
-          <div className="case-pill-label">Current Case</div>
-          <div className="case-pill-main">{selectedCase?.title || "No case selected"}</div>
-          <div className="case-pill-sub">{selectedCase?.id || "—"}</div>
-        </section>
+        {!isDevAdmin && (
+          <section className="case-context card">
+            <div className="case-pill-label">Current Case</div>
+            <div className="case-pill-main">{selectedCase?.title || "No case selected"}</div>
+            <div className="case-pill-sub">{selectedCase?.id || "—"}</div>
+          </section>
+        )}
 
-        <section className="stats-grid">
-          <div className="card stat"><div className="muted">Open Tasks</div><div className="stat-value">{openTasks}</div></div>
-          <div className="card stat"><div className="muted">Completed Tasks</div><div className="stat-value">{doneTasks}</div></div>
-          <div className="card stat"><div className="muted">Messages</div><div className="stat-value">{messages.length}</div></div>
-          <div className="card stat"><div className="muted">Documents</div><div className="stat-value">{documents.length}</div></div>
-        </section>
+        {!isDevAdmin && (
+          <section className="stats-grid">
+            <div className="card stat"><div className="muted">Open Tasks</div><div className="stat-value">{openTasks}</div></div>
+            <div className="card stat"><div className="muted">Completed Tasks</div><div className="stat-value">{doneTasks}</div></div>
+            <div className="card stat"><div className="muted">Messages</div><div className="stat-value">{messages.length}</div></div>
+            <div className="card stat"><div className="muted">Documents</div><div className="stat-value">{documents.length}</div></div>
+          </section>
+        )}
 
         <section className="card content">
           {(tab === "timeline" || tab === "tasks" || tab === "messages") && (
