@@ -340,6 +340,27 @@ app.get("/cases", async (req, res) => {
     [req.auth.userId, canBypassCustomerScope(req), req.auth.customerIds || []]
   );
 
+  const caseIds = caseRows.rows.map((r) => r.id);
+  const childrenResult = caseIds.length
+    ? await query(
+      `SELECT case_id, first_name, last_name, sort_order
+       FROM case_children
+       WHERE case_id = ANY($1::uuid[])
+       ORDER BY case_id ASC, sort_order ASC, created_at ASC`,
+      [caseIds]
+    )
+    : { rows: [] };
+
+  const childrenByCaseId = new Map();
+  for (const row of childrenResult.rows) {
+    if (!childrenByCaseId.has(row.case_id)) childrenByCaseId.set(row.case_id, []);
+    childrenByCaseId.get(row.case_id).push({
+      firstName: row.first_name,
+      lastName: row.last_name,
+      sortOrder: row.sort_order,
+    });
+  }
+
   const cases = caseRows.rows.map((r) => ({
     id: r.id,
     title: r.title,
@@ -347,6 +368,7 @@ app.get("/cases", async (req, res) => {
     createdBy: r.created_by,
     childFirstName: r.child_first_name,
     childLastName: r.child_last_name,
+    children: childrenByCaseId.get(r.id) || [],
     biologicalParentName: r.biological_parent_name,
     fosterParentName: r.foster_parent_name,
     priority: r.priority,
@@ -895,6 +917,7 @@ app.post("/cases", async (req, res) => {
     organizationId,
     childFirstName,
     childLastName,
+    children,
     biologicalParentName,
     fosterParentName,
     priority,
@@ -912,6 +935,20 @@ app.post("/cases", async (req, res) => {
   const requestedOrgId = requestedOrgRaw === "unassigned" ? null : (requestedOrgRaw || null);
   const safePriority = ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal";
   const safeStatus = ["open", "active", "closed"].includes(status) ? status : "open";
+
+  const parsedChildren = Array.isArray(children)
+    ? children
+    : [{ firstName: childFirstName, lastName: childLastName }];
+  const normalizedChildren = parsedChildren
+    .map((c) => ({
+      firstName: String(c?.firstName || "").trim(),
+      lastName: String(c?.lastName || "").trim(),
+    }))
+    .filter((c) => c.firstName || c.lastName);
+  const primaryChild = normalizedChildren[0] || {
+    firstName: String(childFirstName || "").trim(),
+    lastName: String(childLastName || "").trim(),
+  };
 
   let effectiveCustomerId = null;
 
@@ -947,8 +984,8 @@ app.post("/cases", async (req, res) => {
       title.trim(),
       req.auth.userId,
       effectiveCustomerId,
-      childFirstName || null,
-      childLastName || null,
+      primaryChild.firstName || null,
+      primaryChild.lastName || null,
       biologicalParentName || null,
       fosterParentName || null,
       safePriority,
@@ -968,6 +1005,19 @@ app.post("/cases", async (req, res) => {
      ON CONFLICT(case_id,user_id) DO UPDATE SET role = EXCLUDED.role`,
     [randomUUID(), record.id, req.auth.userId, creatorCaseRole]
   );
+
+  if (normalizedChildren.length) {
+    await query("DELETE FROM case_children WHERE case_id = $1", [record.id]);
+    for (let i = 0; i < normalizedChildren.length; i += 1) {
+      const child = normalizedChildren[i];
+      // eslint-disable-next-line no-await-in-loop
+      await query(
+        `INSERT INTO case_children(id, case_id, first_name, last_name, sort_order)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [randomUUID(), record.id, child.firstName || null, child.lastName || null, i]
+      );
+    }
+  }
 
   await req.audit({
     caseId: record.id,
@@ -991,6 +1041,7 @@ app.post("/cases", async (req, res) => {
       organizationId: record.customer_id,
       childFirstName: record.child_first_name,
       childLastName: record.child_last_name,
+      children: normalizedChildren,
       biologicalParentName: record.biological_parent_name,
       fosterParentName: record.foster_parent_name,
       priority: record.priority,

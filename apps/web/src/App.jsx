@@ -674,16 +674,10 @@ export default function App() {
 
   async function createCase() {
     if (!newCaseTitle.trim()) return;
-    const [primaryChild = { firstName: "", lastName: "" }, ...extraChildren] = newCaseChildren;
-    const normalizedExtraChildren = extraChildren
+    const normalizedChildren = newCaseChildren
       .map((c) => ({ firstName: (c.firstName || "").trim(), lastName: (c.lastName || "").trim() }))
       .filter((c) => c.firstName || c.lastName);
-
-    const baseSummary = (newCaseSummary || "").trim();
-    const extraChildrenSummary = normalizedExtraChildren.length
-      ? `Additional children:\n${normalizedExtraChildren.map((c) => `- ${[c.firstName, c.lastName].filter(Boolean).join(" ")}`).join("\n")}`
-      : "";
-    const combinedSummary = [baseSummary, extraChildrenSummary].filter(Boolean).join("\n\n");
+    const [primaryChild = { firstName: "", lastName: "" }] = normalizedChildren;
 
     setLoading(true); setError("");
     try {
@@ -694,13 +688,14 @@ export default function App() {
         token,
         body: {
           title: newCaseTitle.trim(),
-          childFirstName: (primaryChild.firstName || "").trim() || undefined,
-          childLastName: (primaryChild.lastName || "").trim() || undefined,
+          childFirstName: primaryChild.firstName || undefined,
+          childLastName: primaryChild.lastName || undefined,
+          children: normalizedChildren,
           biologicalParentName: newCaseBioParentName || undefined,
           fosterParentName: newCaseFosterParentName || undefined,
           priority: newCasePriority,
           status: newCaseStatus,
-          summary: combinedSummary || undefined,
+          summary: (newCaseSummary || "").trim() || undefined,
           organizationId: newCaseOrganizationId === "unassigned" ? null : (newCaseOrganizationId || undefined),
         },
       });
