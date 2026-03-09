@@ -904,14 +904,19 @@ app.post("/cases", async (req, res) => {
 
   if (!title || !title.trim()) return res.status(400).json({ error: "title is required" });
 
-  const requestedOrgId = organizationId || customerId || null;
+  const hasExplicitOrganization = Object.prototype.hasOwnProperty.call(req.body || {}, "organizationId")
+    || Object.prototype.hasOwnProperty.call(req.body || {}, "customerId");
+  const requestedOrgRaw = Object.prototype.hasOwnProperty.call(req.body || {}, "organizationId")
+    ? organizationId
+    : customerId;
+  const requestedOrgId = requestedOrgRaw === "unassigned" ? null : (requestedOrgRaw || null);
   const safePriority = ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal";
   const safeStatus = ["open", "active", "closed"].includes(status) ? status : "open";
 
   let effectiveCustomerId = null;
 
   if (canBypassCustomerScope(req)) {
-    effectiveCustomerId = requestedOrgId || defaultOrganizationId(req) || null;
+    effectiveCustomerId = hasExplicitOrganization ? requestedOrgId : (defaultOrganizationId(req) || null);
   } else if (canCreateByOrgRole) {
     // For agency admins/managers, default to their own organization scope.
     effectiveCustomerId = defaultOrganizationId(req);
@@ -919,11 +924,11 @@ app.post("/cases", async (req, res) => {
     effectiveCustomerId = defaultOrganizationId(req);
   }
 
-  if (!effectiveCustomerId) {
+  if (!effectiveCustomerId && !canBypassCustomerScope(req)) {
     return res.status(400).json({ error: "No organization scope available for this user" });
   }
 
-  if (!inCustomerScope(req, effectiveCustomerId)) {
+  if (effectiveCustomerId && !inCustomerScope(req, effectiveCustomerId)) {
     return res.status(403).json({ error: "Organization scope violation" });
   }
 

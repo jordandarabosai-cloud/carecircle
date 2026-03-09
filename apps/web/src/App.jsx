@@ -143,8 +143,7 @@ export default function App() {
   const [newUserPhone, setNewUserPhone] = useState("");
   const [newUserRole, setNewUserRole] = useState("case_worker");
   const [newCaseTitle, setNewCaseTitle] = useState("");
-  const [newCaseChildFirstName, setNewCaseChildFirstName] = useState("");
-  const [newCaseChildLastName, setNewCaseChildLastName] = useState("");
+  const [newCaseChildren, setNewCaseChildren] = useState([{ firstName: "", lastName: "" }]);
   const [newCaseBioParentName, setNewCaseBioParentName] = useState("");
   const [newCaseFosterParentName, setNewCaseFosterParentName] = useState("");
   const [newCasePriority, setNewCasePriority] = useState("normal");
@@ -658,8 +657,34 @@ export default function App() {
     signOut();
   }
 
+  function updateNewCaseChild(index, field, value) {
+    setNewCaseChildren((prev) => prev.map((child, i) => (i === index ? { ...child, [field]: value } : child)));
+  }
+
+  function addNewCaseChild() {
+    setNewCaseChildren((prev) => [...prev, { firstName: "", lastName: "" }]);
+  }
+
+  function removeNewCaseChild(index) {
+    setNewCaseChildren((prev) => {
+      if (prev.length <= 1) return [{ firstName: "", lastName: "" }];
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
   async function createCase() {
     if (!newCaseTitle.trim()) return;
+    const [primaryChild = { firstName: "", lastName: "" }, ...extraChildren] = newCaseChildren;
+    const normalizedExtraChildren = extraChildren
+      .map((c) => ({ firstName: (c.firstName || "").trim(), lastName: (c.lastName || "").trim() }))
+      .filter((c) => c.firstName || c.lastName);
+
+    const baseSummary = (newCaseSummary || "").trim();
+    const extraChildrenSummary = normalizedExtraChildren.length
+      ? `Additional children:\n${normalizedExtraChildren.map((c) => `- ${[c.firstName, c.lastName].filter(Boolean).join(" ")}`).join("\n")}`
+      : "";
+    const combinedSummary = [baseSummary, extraChildrenSummary].filter(Boolean).join("\n\n");
+
     setLoading(true); setError("");
     try {
       await apiRequest({
@@ -669,20 +694,19 @@ export default function App() {
         token,
         body: {
           title: newCaseTitle.trim(),
-          childFirstName: newCaseChildFirstName || undefined,
-          childLastName: newCaseChildLastName || undefined,
+          childFirstName: (primaryChild.firstName || "").trim() || undefined,
+          childLastName: (primaryChild.lastName || "").trim() || undefined,
           biologicalParentName: newCaseBioParentName || undefined,
           fosterParentName: newCaseFosterParentName || undefined,
           priority: newCasePriority,
           status: newCaseStatus,
-          summary: newCaseSummary || undefined,
-          organizationId: newCaseOrganizationId || undefined,
+          summary: combinedSummary || undefined,
+          organizationId: newCaseOrganizationId === "unassigned" ? null : (newCaseOrganizationId || undefined),
         },
       });
 
       setNewCaseTitle("");
-      setNewCaseChildFirstName("");
-      setNewCaseChildLastName("");
+      setNewCaseChildren([{ firstName: "", lastName: "" }]);
       setNewCaseBioParentName("");
       setNewCaseFosterParentName("");
       setNewCasePriority("normal");
@@ -1193,14 +1217,21 @@ export default function App() {
                 <div className="row">
                   <select value={newCaseOrganizationId} onChange={(e) => setNewCaseOrganizationId(e.target.value)}>
                     <option value="">Select organization…</option>
+                    <option value="unassigned">Unassigned</option>
                     {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
                   </select>
                   <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
                   <button onClick={createCase}>Create Case</button>
                 </div>
+                {newCaseChildren.map((child, idx) => (
+                  <div className="row" key={`new-case-child-${idx}`}>
+                    <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
+                    <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                    <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)} disabled={newCaseChildren.length === 1}>Remove</button>
+                  </div>
+                ))}
                 <div className="row">
-                  <input value={newCaseChildFirstName} onChange={(e) => setNewCaseChildFirstName(e.target.value)} placeholder="Child first name" />
-                  <input value={newCaseChildLastName} onChange={(e) => setNewCaseChildLastName(e.target.value)} placeholder="Child last name" />
+                  <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
                   <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
                   <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
                 </div>
@@ -1293,10 +1324,16 @@ export default function App() {
                 <h3>Create Case</h3>
                 <div className="row">
                   <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
-                  <input value={newCaseChildFirstName} onChange={(e) => setNewCaseChildFirstName(e.target.value)} placeholder="Child first name" />
-                  <input value={newCaseChildLastName} onChange={(e) => setNewCaseChildLastName(e.target.value)} placeholder="Child last name" />
                 </div>
+                {newCaseChildren.map((child, idx) => (
+                  <div className="row" key={`manager-new-case-child-${idx}`}>
+                    <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
+                    <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                    <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)} disabled={newCaseChildren.length === 1}>Remove</button>
+                  </div>
+                ))}
                 <div className="row">
+                  <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
                   <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
                   <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
                 </div>
