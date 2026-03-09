@@ -738,9 +738,82 @@ export default function App() {
                 <div className="card stat"><div className="muted">Cases</div><div className="stat-value">{devCases.length}</div></div>
                 <div className="card stat"><div className="muted">Unassigned Cases</div><div className="stat-value">{devCases.filter((c)=>!c.primaryCaseWorkerId).length}</div></div>
               </div>
+              <div className="overview-grid">
+                <div className="item">
+                  <h3>Unassigned Case Queue</h3>
+                  {devCasesSorted.filter((c) => !c.primaryCaseWorkerId).slice(0, 8).map((c) => (
+                    <div key={c.id} className="member-row">
+                      <div>
+                        <div className="case-title">{c.title}</div>
+                        <div className="muted">{c.organizationName || "Unassigned org"}</div>
+                      </div>
+                      <button className="secondary" onClick={() => { setTab("dev_cases"); }}>Assign</button>
+                    </div>
+                  ))}
+                  {devCasesSorted.filter((c) => !c.primaryCaseWorkerId).length === 0 ? <div className="muted">No unassigned cases 🎉</div> : null}
+                </div>
+
+                <div className="item">
+                  <h3>Highest Case Loads</h3>
+                  {[...managerUsers]
+                    .filter((u) => u.role === "case_worker")
+                    .sort((a, b) => {
+                      const ac = devCases.filter((c) => c.primaryCaseWorkerName === a.fullName).length;
+                      const bc = devCases.filter((c) => c.primaryCaseWorkerName === b.fullName).length;
+                      return bc - ac;
+                    })
+                    .slice(0, 8)
+                    .map((u) => {
+                      const count = devCases.filter((c) => c.primaryCaseWorkerName === u.fullName).length;
+                      return (
+                        <div key={u.id} className="member-row">
+                          <div>
+                            <div className="case-title">{u.fullName}</div>
+                            <div className="muted">{u.email}</div>
+                          </div>
+                          <div className="load-pill">{count} cases</div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              <div className="item table-wrap">
+                <h3>Recent Cases</h3>
+                <table className="cases-table">
+                  <thead>
+                    <tr>
+                      <th>Case</th>
+                      <th>Organization</th>
+                      <th>Primary Worker</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {devCasesSorted.slice(0, 10).map((c) => (
+                      <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
+                        <td>
+                          <div className="case-title">{c.title}</div>
+                          <div className="muted">{c.id}</div>
+                        </td>
+                        <td>{c.organizationName || "Unassigned"}</td>
+                        <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
+                        <td>{c.primaryCaseWorkerName ? "Assigned" : "Needs assignment"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
               <div className="item">
                 <h3>Quick Notes</h3>
                 <div className="muted">Use Organizations to manage memberships, Users to inspect accounts, Cases to assign ownership, and Tools for diagnostics.</div>
+                <div className="row" style={{ marginTop: 10 }}>
+                  <button className="secondary" onClick={() => setTab("dev_organizations")}>Go to Organizations</button>
+                  <button className="secondary" onClick={() => setTab("dev_users")}>Go to Users</button>
+                  <button className="secondary" onClick={() => setTab("dev_cases")}>Go to Cases</button>
+                  <button className="secondary" onClick={() => setTab("dev_tools")}>Go to Tools</button>
+                </div>
               </div>
             </div>
           )}

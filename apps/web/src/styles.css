@@ -69,6 +69,7 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .member-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #d9f2ef; }
 .member-row:last-child { border-bottom: none; }
 .task-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.load-pill { background: #dcfce7; color: #166534; border: 1px solid #86efac; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
 
 .table-wrap { overflow-x: auto; }
 .cases-table { width: 100%; border-collapse: collapse; font-size: 14px; }
