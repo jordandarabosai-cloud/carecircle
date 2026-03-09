@@ -928,17 +928,6 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="row">
-                <label className="muted">Organization Role</label>
-                <select value={orgAssignRole} onChange={(e) => setOrgAssignRole(e.target.value)}>
-                  <option value="agency_admin">Agency Admin</option><option value="manager">Manager</option><option value="case_worker">Case Worker</option>
-                  <option value="foster_parent">Foster Parent</option><option value="biological_parent">Biological Parent</option><option value="gal">GAL / CASA</option><option value="member">Member</option>
-                </select>
-                <label className="muted">Case Role</label>
-                <select value={caseAssignRole} onChange={(e) => setCaseAssignRole(e.target.value)}>
-                  <option value="case_worker">Case Worker</option><option value="foster_parent">Foster Parent</option><option value="biological_parent">Biological Parent</option><option value="gal">GAL / CASA</option>
-                </select>
-              </div>
 
               {editingOrganizationId ? (
                 <div className="item">
