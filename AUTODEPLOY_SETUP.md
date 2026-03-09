@@ -10,15 +10,25 @@ It runs on:
 
 In GitHub repo settings, add these **Actions secrets**:
 
+### Vercel secret
 - `VERCEL_DEPLOY_HOOK_URL`
-- `RAILWAY_DEPLOY_HOOK_URL`
 
-### Where to get the hook URLs
+Get it from: **Vercel Project → Settings → Git → Deploy Hooks → Create Hook** (branch `master`).
 
-- **Vercel**: Project → Settings → Git / Deploy Hooks → Create Hook
-- **Railway**: Service → Deployments / Settings → Deploy Hook
+### Railway secrets
+- `RAILWAY_TOKEN`
+- `RAILWAY_PROJECT_ID`
+- `RAILWAY_ENVIRONMENT_ID`
+- `RAILWAY_SERVICE_NAME`
+
+Where to get values:
+- `RAILWAY_TOKEN`: Railway account token
+- `RAILWAY_PROJECT_ID`: from project URL
+- `RAILWAY_ENVIRONMENT_ID`: production environment ID
+- `RAILWAY_SERVICE_NAME`: service name (e.g. `@carecircle/api`)
 
 ## Behavior
 
-- If a secret is present, that deploy is triggered.
-- If missing, that target is skipped (workflow still succeeds).
+- If Vercel hook secret is present, web deploy is triggered.
+- If Railway token/id/name secrets are present, API redeploy is triggered via Railway CLI.
+- Missing secrets skip that target (workflow still succeeds).
