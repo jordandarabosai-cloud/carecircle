@@ -148,6 +148,17 @@ export default function App() {
   const [newCaseSummary, setNewCaseSummary] = useState("");
   const [newCaseOrganizationId, setNewCaseOrganizationId] = useState("");
 
+  const [devOverviewCaseSearch, setDevOverviewCaseSearch] = useState("");
+  const [devOverviewCaseStatusFilter, setDevOverviewCaseStatusFilter] = useState("all");
+  const [devOrgSearch, setDevOrgSearch] = useState("");
+  const [devOrgArchivedFilter, setDevOrgArchivedFilter] = useState("all");
+  const [devUserSearch, setDevUserSearch] = useState("");
+  const [devUserRoleFilter, setDevUserRoleFilter] = useState("all");
+  const [devCaseSearch, setDevCaseSearch] = useState("");
+  const [devCaseAssignmentFilter, setDevCaseAssignmentFilter] = useState("all");
+  const [overviewCaseSearch, setOverviewCaseSearch] = useState("");
+  const [overviewCaseWorkerFilter, setOverviewCaseWorkerFilter] = useState("all");
+
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const isDevAdmin = user?.role === "dev_admin";
   const showCaseContext = !isDevAdmin && ["overview", "timeline", "calendar", "tasks", "messages", "documents", "invites", "parent_home"].includes(tab);
@@ -181,6 +192,54 @@ export default function App() {
       return (a.title || "").localeCompare(b.title || "");
     });
   }, [devCases]);
+
+  const filteredDevOverviewCases = useMemo(() => {
+    const q = devOverviewCaseSearch.trim().toLowerCase();
+    return devCasesSorted.filter((c) => {
+      const textOk = !q || [c.title, c.id, c.organizationName, c.primaryCaseWorkerName].some((v) => String(v || "").toLowerCase().includes(q));
+      const assigned = !!c.primaryCaseWorkerId;
+      const statusOk = devOverviewCaseStatusFilter === "all" || (devOverviewCaseStatusFilter === "assigned" ? assigned : !assigned);
+      return textOk && statusOk;
+    });
+  }, [devCasesSorted, devOverviewCaseSearch, devOverviewCaseStatusFilter]);
+
+  const filteredDevOrganizations = useMemo(() => {
+    const q = devOrgSearch.trim().toLowerCase();
+    return devCustomers.filter((c) => {
+      const textOk = !q || [c.name, c.id].some((v) => String(v || "").toLowerCase().includes(q));
+      const archivedOk = devOrgArchivedFilter === "all" || (devOrgArchivedFilter === "archived" ? !!c.archivedAt : !c.archivedAt);
+      return textOk && archivedOk;
+    });
+  }, [devCustomers, devOrgSearch, devOrgArchivedFilter]);
+
+  const filteredDevUsers = useMemo(() => {
+    const q = devUserSearch.trim().toLowerCase();
+    return managerUsers.filter((u) => {
+      const textOk = !q || [u.fullName, u.email, u.phoneNumber, u.role].some((v) => String(v || "").toLowerCase().includes(q));
+      const roleOk = devUserRoleFilter === "all" || u.role === devUserRoleFilter;
+      return textOk && roleOk;
+    });
+  }, [managerUsers, devUserSearch, devUserRoleFilter]);
+
+  const filteredDevCases = useMemo(() => {
+    const q = devCaseSearch.trim().toLowerCase();
+    return devCasesSorted.filter((c) => {
+      const textOk = !q || [c.title, c.id, c.organizationName, c.primaryCaseWorkerName].some((v) => String(v || "").toLowerCase().includes(q));
+      const assigned = !!c.primaryCaseWorkerId;
+      const assignmentOk = devCaseAssignmentFilter === "all" || (devCaseAssignmentFilter === "assigned" ? assigned : !assigned);
+      return textOk && assignmentOk;
+    });
+  }, [devCasesSorted, devCaseSearch, devCaseAssignmentFilter]);
+
+  const filteredOverviewCases = useMemo(() => {
+    const q = overviewCaseSearch.trim().toLowerCase();
+    return cases.filter((c) => {
+      const textOk = !q || [c.title, c.id, c.primaryCaseWorkerName].some((v) => String(v || "").toLowerCase().includes(q));
+      const assigned = !!c.primaryCaseWorkerName;
+      const workerOk = overviewCaseWorkerFilter === "all" || (overviewCaseWorkerFilter === "assigned" ? assigned : !assigned);
+      return textOk && workerOk;
+    });
+  }, [cases, overviewCaseSearch, overviewCaseWorkerFilter]);
 
   const currentCaseCalendarEvents = useMemo(() => {
     const out = [];
@@ -873,6 +932,14 @@ export default function App() {
 
               <div className="item table-wrap">
                 <h3>Recent Cases</h3>
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <input value={devOverviewCaseSearch} onChange={(e) => setDevOverviewCaseSearch(e.target.value)} placeholder="Search cases…" />
+                  <select value={devOverviewCaseStatusFilter} onChange={(e) => setDevOverviewCaseStatusFilter(e.target.value)}>
+                    <option value="all">All statuses</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="unassigned">Unassigned</option>
+                  </select>
+                </div>
                 <table className="cases-table">
                   <thead>
                     <tr>
@@ -883,7 +950,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {devCasesSorted.slice(0, 10).map((c) => (
+                    {filteredDevOverviewCases.slice(0, 10).map((c) => (
                       <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
                         <td>
                           <div className="case-title">{c.title}</div>
@@ -944,10 +1011,18 @@ export default function App() {
               ) : null}
 
               <div className="item table-wrap">
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <input value={devOrgSearch} onChange={(e) => setDevOrgSearch(e.target.value)} placeholder="Search organizations…" />
+                  <select value={devOrgArchivedFilter} onChange={(e) => setDevOrgArchivedFilter(e.target.value)}>
+                    <option value="all">All</option>
+                    <option value="active">Active only</option>
+                    <option value="archived">Archived only</option>
+                  </select>
+                </div>
                 <table className="cases-table">
                   <thead><tr><th>Organization</th><th>Users</th><th>Cases</th><th>Actions</th></tr></thead>
                   <tbody>
-                    {devCustomers.map((c) => (
+                    {filteredDevOrganizations.map((c) => (
                       <tr key={c.id} className={devSelectedOrgId === c.id ? "row-selected" : ""}>
                         <td><div className="case-title">{c.name}</div>{c.archivedAt ? <div className="muted">Archived</div> : null}</td>
                         <td>{c.userCount}</td>
@@ -998,10 +1073,22 @@ export default function App() {
               </div>
 
               <div className="item table-wrap">
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <input value={devUserSearch} onChange={(e) => setDevUserSearch(e.target.value)} placeholder="Search users…" />
+                  <select value={devUserRoleFilter} onChange={(e) => setDevUserRoleFilter(e.target.value)}>
+                    <option value="all">All roles</option>
+                    <option value="admin">{roleLabel("admin")}</option>
+                    <option value="dev_admin">{roleLabel("dev_admin")}</option>
+                    <option value="case_worker">{roleLabel("case_worker")}</option>
+                    <option value="foster_parent">{roleLabel("foster_parent")}</option>
+                    <option value="biological_parent">{roleLabel("biological_parent")}</option>
+                    <option value="gal">{roleLabel("gal")}</option>
+                  </select>
+                </div>
                 <table className="cases-table">
                   <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Global Role</th><th>Action</th></tr></thead>
                   <tbody>
-                    {managerUsers.map((u) => (
+                    {filteredDevUsers.map((u) => (
                       <tr key={u.id}>
                         <td>
                           {editingUserId === u.id ? (
@@ -1083,6 +1170,14 @@ export default function App() {
               </div>
 
               <div className="item table-wrap">
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <input value={devCaseSearch} onChange={(e) => setDevCaseSearch(e.target.value)} placeholder="Search cases…" />
+                  <select value={devCaseAssignmentFilter} onChange={(e) => setDevCaseAssignmentFilter(e.target.value)}>
+                    <option value="all">All</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="unassigned">Unassigned</option>
+                  </select>
+                </div>
                 <table className="cases-table">
                   <thead>
                     <tr>
@@ -1094,7 +1189,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {devCasesSorted.map((c) => (
+                    {filteredDevCases.map((c) => (
                       <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
                         <td><div className="case-title">{c.title}</div><div className="muted">{c.id}</div></td>
                         <td>{c.organizationName || "Unassigned"}</td>
@@ -1399,6 +1494,14 @@ export default function App() {
 
               <div className="item table-wrap">
                 <h3>{user?.role === "admin" ? "Platform Case Snapshot" : "My Active Cases"}</h3>
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <input value={overviewCaseSearch} onChange={(e) => setOverviewCaseSearch(e.target.value)} placeholder="Search my cases…" />
+                  <select value={overviewCaseWorkerFilter} onChange={(e) => setOverviewCaseWorkerFilter(e.target.value)}>
+                    <option value="all">All</option>
+                    <option value="assigned">Assigned worker</option>
+                    <option value="unassigned">Unassigned worker</option>
+                  </select>
+                </div>
                 <table className="cases-table">
                   <thead>
                     <tr>
@@ -1409,7 +1512,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cases.slice(0, 10).map((c) => (
+                    {filteredOverviewCases.slice(0, 10).map((c) => (
                       <tr key={c.id}>
                         <td><div className="case-title">{c.title}</div><div className="muted">{c.id}</div></td>
                         <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
