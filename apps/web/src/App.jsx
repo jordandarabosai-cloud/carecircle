@@ -144,6 +144,7 @@ export default function App() {
 
   const selectedCase = useMemo(() => cases.find((c) => c.id === caseId), [cases, caseId]);
   const isDevAdmin = user?.role === "dev_admin";
+  const showCaseContext = !isDevAdmin && ["overview", "timeline", "calendar", "tasks", "messages", "documents", "invites", "parent_home"].includes(tab);
 
   const tabs = useMemo(() => {
     const role = user?.role;
@@ -658,7 +659,7 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {!isDevAdmin && (
+        {showCaseContext && (
           <section className="case-context card">
             <div className="case-pill-label">Current Case</div>
             <div className="case-pill-main">{selectedCase?.title || "No case selected"}</div>
