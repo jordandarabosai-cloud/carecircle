@@ -994,38 +994,44 @@ export default function App() {
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
               </div>
 
-              {editingUserId ? (
-                <div className="item">
-                  <h3>Edit User</h3>
-                  <div className="row">
-                    <input value={editingUserName} onChange={(e) => setEditingUserName(e.target.value)} placeholder="Full name" />
-                    <input value={editingUserEmail} onChange={(e) => setEditingUserEmail(e.target.value)} placeholder="Email" />
-                    <select value={editingUserRole} onChange={(e) => setEditingUserRole(e.target.value)}>
-                      <option value="admin">{roleLabel("admin")}</option>
-                      <option value="dev_admin">{roleLabel("dev_admin")}</option>
-                      <option value="case_worker">{roleLabel("case_worker")}</option>
-                      <option value="foster_parent">{roleLabel("foster_parent")}</option>
-                      <option value="biological_parent">{roleLabel("biological_parent")}</option>
-                      <option value="gal">{roleLabel("gal")}</option>
-                    </select>
-                  </div>
-                  <div className="row">
-                    <button onClick={saveEditedUser}>Save User</button>
-                    <button className="secondary" onClick={() => setEditingUserId("")}>Cancel</button>
-                  </div>
-                </div>
-              ) : null}
-
               <div className="item table-wrap">
                 <table className="cases-table">
                   <thead><tr><th>Name</th><th>Email</th><th>Global Role</th><th>Action</th></tr></thead>
                   <tbody>
                     {managerUsers.map((u) => (
                       <tr key={u.id}>
-                        <td>{u.fullName}</td>
-                        <td>{u.email}</td>
-                        <td>{roleLabel(u.role)}</td>
-                        <td><button className="secondary" onClick={() => startEditUser(u)}>Edit</button></td>
+                        <td>
+                          {editingUserId === u.id ? (
+                            <input value={editingUserName} onChange={(e) => setEditingUserName(e.target.value)} placeholder="Full name" />
+                          ) : u.fullName}
+                        </td>
+                        <td>
+                          {editingUserId === u.id ? (
+                            <input value={editingUserEmail} onChange={(e) => setEditingUserEmail(e.target.value)} placeholder="Email" />
+                          ) : u.email}
+                        </td>
+                        <td>
+                          {editingUserId === u.id ? (
+                            <select value={editingUserRole} onChange={(e) => setEditingUserRole(e.target.value)}>
+                              <option value="admin">{roleLabel("admin")}</option>
+                              <option value="dev_admin">{roleLabel("dev_admin")}</option>
+                              <option value="case_worker">{roleLabel("case_worker")}</option>
+                              <option value="foster_parent">{roleLabel("foster_parent")}</option>
+                              <option value="biological_parent">{roleLabel("biological_parent")}</option>
+                              <option value="gal">{roleLabel("gal")}</option>
+                            </select>
+                          ) : roleLabel(u.role)}
+                        </td>
+                        <td>
+                          {editingUserId === u.id ? (
+                            <div className="row">
+                              <button onClick={saveEditedUser}>Save</button>
+                              <button className="secondary" onClick={() => setEditingUserId("")}>Cancel</button>
+                            </div>
+                          ) : (
+                            <button className="secondary" onClick={() => startEditUser(u)}>Edit</button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
