@@ -575,6 +575,36 @@ app.get("/development/organizations", requireRole("dev_admin"), async (_req, res
   return res.json({ organizations });
 });
 
+app.post("/development/organizations", requireRole("dev_admin"), async (req, res) => {
+  const rawName = String(req.body?.name || "").trim();
+  if (!rawName) return res.status(400).json({ error: "Organization name is required" });
+
+  const existing = await query(
+    `SELECT id, name FROM customers WHERE lower(name) = lower($1) LIMIT 1`,
+    [rawName]
+  );
+  if (existing.rowCount) {
+    return res.status(409).json({ error: "Organization already exists", organization: existing.rows[0] });
+  }
+
+  const inserted = await query(
+    `INSERT INTO customers(id, name) VALUES ($1, $2)
+     RETURNING id, name, created_at`,
+    [randomUUID(), rawName]
+  );
+
+  const org = inserted.rows[0];
+  return res.status(201).json({
+    organization: {
+      id: org.id,
+      name: org.name,
+      createdAt: org.created_at,
+      userCount: 0,
+      caseCount: 0,
+    },
+  });
+});
+
 app.get("/development/organizations/:customerId/users", requireRole("dev_admin"), async (req, res) => {
   const { customerId } = req.params;
 

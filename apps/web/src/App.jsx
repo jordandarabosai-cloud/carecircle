@@ -129,6 +129,7 @@ export default function App() {
   const [caseAssignRole, setCaseAssignRole] = useState("case_worker");
   const [devHealth, setDevHealth] = useState(null);
   const [devReady, setDevReady] = useState(null);
+  const [newOrganizationName, setNewOrganizationName] = useState("");
   const [editingUserId, setEditingUserId] = useState("");
   const [editingUserName, setEditingUserName] = useState("");
   const [editingUserEmail, setEditingUserEmail] = useState("");
@@ -415,6 +416,24 @@ export default function App() {
       setManagerUsers(users.users || []);
       setDevCases(allCases.cases || []);
       if (!devSelectedOrgId && orgs.length) setDevSelectedOrgId(orgs[0].id);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function createOrganization() {
+    const name = newOrganizationName.trim();
+    if (!name) return;
+    setLoading(true); setError("");
+    try {
+      const out = await apiRequest({
+        baseUrl: apiBase,
+        path: "/development/organizations",
+        method: "POST",
+        token,
+        body: { name },
+      });
+      setNewOrganizationName("");
+      if (out?.organization?.id) setDevSelectedOrgId(out.organization.id);
+      await loadDevelopmentData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -832,6 +851,13 @@ export default function App() {
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
               </div>
 
+              <div className="item">
+                <h3>Create Organization</h3>
+                <div className="row">
+                  <input value={newOrganizationName} onChange={(e) => setNewOrganizationName(e.target.value)} placeholder="Organization name" />
+                  <button onClick={createOrganization}>Create Organization</button>
+                </div>
+              </div>
 
               <div className="row">
                 <label className="muted">Organization Role</label>
