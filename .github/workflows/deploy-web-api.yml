@@ -1,0 +1,31 @@
+name: Deploy Web + API
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Railway deploy (API)
+        if: ${{ secrets.RAILWAY_DEPLOY_HOOK_URL != '' }}
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST "$RAILWAY_DEPLOY_HOOK_URL"
+        env:
+          RAILWAY_DEPLOY_HOOK_URL: ${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}
+
+      - name: Trigger Vercel deploy (Web)
+        if: ${{ secrets.VERCEL_DEPLOY_HOOK_URL != '' }}
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+
+      - name: Summary
+        run: |
+          echo "Triggered deploy hooks for whichever secrets are configured."
+          echo "Missing secrets will skip that target."
