@@ -130,6 +130,8 @@ export default function App() {
   const [devHealth, setDevHealth] = useState(null);
   const [devReady, setDevReady] = useState(null);
   const [newOrganizationName, setNewOrganizationName] = useState("");
+  const [editingOrganizationId, setEditingOrganizationId] = useState("");
+  const [editingOrganizationName, setEditingOrganizationName] = useState("");
   const [editingUserId, setEditingUserId] = useState("");
   const [editingUserName, setEditingUserName] = useState("");
   const [editingUserEmail, setEditingUserEmail] = useState("");
@@ -433,6 +435,46 @@ export default function App() {
       });
       setNewOrganizationName("");
       if (out?.organization?.id) setDevSelectedOrgId(out.organization.id);
+      await loadDevelopmentData();
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  function startEditOrganization(org) {
+    setEditingOrganizationId(org.id);
+    setEditingOrganizationName(org.name || "");
+  }
+
+  async function saveOrganizationName() {
+    if (!editingOrganizationId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/development/organizations/${editingOrganizationId}`,
+        method: "PATCH",
+        token,
+        body: { name: editingOrganizationName },
+      });
+      setEditingOrganizationId("");
+      setEditingOrganizationName("");
+      await loadDevelopmentData();
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function archiveOrganization(orgId) {
+    if (!orgId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/development/organizations/${orgId}/archive`,
+        method: "POST",
+        token,
+      });
+      if (devSelectedOrgId === orgId) {
+        setDevSelectedOrgId("");
+        setDevOrgUsers([]);
+      }
       await loadDevelopmentData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
@@ -871,6 +913,17 @@ export default function App() {
                 </select>
               </div>
 
+              {editingOrganizationId ? (
+                <div className="item">
+                  <h3>Edit Organization</h3>
+                  <div className="row">
+                    <input value={editingOrganizationName} onChange={(e) => setEditingOrganizationName(e.target.value)} placeholder="Organization name" />
+                    <button onClick={saveOrganizationName}>Save Name</button>
+                    <button className="secondary" onClick={() => { setEditingOrganizationId(""); setEditingOrganizationName(""); }}>Cancel</button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="item table-wrap">
                 <table className="cases-table">
                   <thead><tr><th>Organization</th><th>Users</th><th>Cases</th><th>Actions</th></tr></thead>
@@ -883,6 +936,8 @@ export default function App() {
                         <td>
                           <div className="row">
                             <button className="secondary" onClick={() => setDevSelectedOrgId(c.id)}>View Members</button>
+                            <button className="secondary" onClick={() => startEditOrganization(c)}>Edit</button>
+                            <button className="secondary" onClick={() => archiveOrganization(c.id)}>Archive</button>
                             <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value, orgAssignRole)}>
                               <option value="" disabled>Assign user…</option>
                               {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}

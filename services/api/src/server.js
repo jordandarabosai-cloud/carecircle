@@ -560,6 +560,7 @@ app.get("/development/organizations", requireRole("dev_admin"), async (_req, res
      FROM customers c
      LEFT JOIN customer_users cu ON cu.customer_id = c.id
      LEFT JOIN cases cs ON cs.customer_id = c.id
+     WHERE c.archived_at IS NULL
      GROUP BY c.id, c.name, c.created_at
      ORDER BY c.name ASC`
   );
@@ -580,7 +581,7 @@ app.post("/development/organizations", requireRole("dev_admin"), async (req, res
   if (!rawName) return res.status(400).json({ error: "Organization name is required" });
 
   const existing = await query(
-    `SELECT id, name FROM customers WHERE lower(name) = lower($1) LIMIT 1`,
+    `SELECT id, name FROM customers WHERE lower(name) = lower($1) AND archived_at IS NULL LIMIT 1`,
     [rawName]
   );
   if (existing.rowCount) {
@@ -605,10 +606,43 @@ app.post("/development/organizations", requireRole("dev_admin"), async (req, res
   });
 });
 
+app.patch("/development/organizations/:customerId", requireRole("dev_admin"), async (req, res) => {
+  const { customerId } = req.params;
+  const name = String(req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ error: "Organization name is required" });
+
+  const duplicate = await query(
+    `SELECT id FROM customers WHERE lower(name)=lower($1) AND id <> $2 AND archived_at IS NULL LIMIT 1`,
+    [name, customerId]
+  );
+  if (duplicate.rowCount) return res.status(409).json({ error: "Organization name already in use" });
+
+  const updated = await query(
+    `UPDATE customers SET name = $2 WHERE id = $1 AND archived_at IS NULL RETURNING id, name, created_at`,
+    [customerId, name]
+  );
+
+  if (!updated.rowCount) return res.status(404).json({ error: "Organization not found" });
+  const row = updated.rows[0];
+  return res.json({ organization: { id: row.id, name: row.name, createdAt: row.created_at } });
+});
+
+app.post("/development/organizations/:customerId/archive", requireRole("dev_admin"), async (req, res) => {
+  const { customerId } = req.params;
+
+  const archived = await query(
+    `UPDATE customers SET archived_at = NOW() WHERE id = $1 AND archived_at IS NULL RETURNING id, name`,
+    [customerId]
+  );
+
+  if (!archived.rowCount) return res.status(404).json({ error: "Organization not found" });
+  return res.json({ archived: true, organizationId: archived.rows[0].id, name: archived.rows[0].name });
+});
+
 app.get("/development/organizations/:customerId/users", requireRole("dev_admin"), async (req, res) => {
   const { customerId } = req.params;
 
-  const customer = await query("SELECT id, name FROM customers WHERE id = $1 LIMIT 1", [customerId]);
+  const customer = await query("SELECT id, name FROM customers WHERE id = $1 AND archived_at IS NULL LIMIT 1", [customerId]);
   if (!customer.rowCount) return res.status(404).json({ error: "Organization not found" });
 
   const result = await query(
