@@ -40,13 +40,17 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .sidebar-label { color: #d1fae5; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .sidebar-section select { width: 100%; }
 
-.main { padding: 20px; display: grid; gap: 14px; }
-.card { background: var(--cc-surface); border: 1px solid var(--cc-border); border-radius: 14px; padding: 14px; box-shadow: var(--cc-shadow); }
+.main { padding: 22px; display: grid; gap: 16px; }
+.card { background: var(--cc-surface); border: 1px solid var(--cc-border); border-radius: 14px; padding: 16px; box-shadow: var(--cc-shadow); }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.topbar h1 { margin: 0; font-size: 22px; }
+.topbar h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
 
-.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
-.stat-value { font-size: 28px; font-weight: 800; color: var(--cc-primary-strong); }
+h3 { margin: 0 0 8px; font-size: 17px; letter-spacing: -.01em; }
+h4 { margin: 0 0 6px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.stat { padding: 14px; }
+.stat-value { font-size: 28px; font-weight: 800; color: var(--cc-primary-strong); line-height: 1.1; }
 
 .case-context {
   display: grid;
@@ -59,13 +63,14 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .case-pill-sub { font-size: 13px; color: var(--cc-muted); }
 
 .content { display: grid; gap: 12px; }
-.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.cases-wrap { display: grid; gap: 10px; }
+.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.cases-wrap { display: grid; gap: 12px; }
 .cases-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
 .case-card { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .case-card.active { border-color: var(--cc-primary); box-shadow: inset 0 0 0 1px var(--cc-primary); }
 .case-title { font-weight: 700; }
-.item { background: #f8fffe; border: 1px solid #d6f5f2; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.item { background: #f8fffe; border: 1px solid #d6f5f2; border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+.item h3 { margin-bottom: 10px; }
 .member-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #d9f2ef; }
 .member-row:last-child { border-bottom: none; }
 .task-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -75,7 +80,8 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .cases-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .cases-table th,
 .cases-table td { text-align: left; border-bottom: 1px solid #dbeafe; padding: 10px 8px; vertical-align: top; }
-.cases-table th { color: #0e7490; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.cases-table th { color: #0e7490; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; position: sticky; top: 0; background: #f0fdff; z-index: 1; }
+.cases-table tbody tr:hover td { background: #f0fdfa; }
 .cases-table tr.row-unassigned { background: #fffbeb; }
 .cases-table tr.row-unassigned td { border-bottom-color: #fde68a; }
 
@@ -83,7 +89,9 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .between { justify-content: space-between; }
 
 button, input, select, textarea { border-radius: 10px; border: 1px solid #bae6fd; padding: 10px 12px; font: inherit; }
-button { background: linear-gradient(90deg, var(--cc-primary), var(--cc-secondary)); color: #fff; border: none; cursor: pointer; }
+button { background: linear-gradient(90deg, var(--cc-primary), var(--cc-secondary)); color: #fff; border: none; cursor: pointer; font-weight: 600; transition: transform .05s ease, box-shadow .15s ease; }
+button:hover { box-shadow: 0 6px 18px rgba(6, 182, 212, .25); }
+button:active { transform: translateY(1px); }
 textarea { width: 100%; background: #fff; min-height: 72px; resize: vertical; }
 button.secondary { background: var(--cc-primary-soft); color: #0e7490; border: 1px solid #a5f3fc; }
 button.tab { width: 100%; text-align: left; background: rgba(255,255,255,.06); color: #ecfeff; border: 1px solid rgba(255,255,255,.2); }
