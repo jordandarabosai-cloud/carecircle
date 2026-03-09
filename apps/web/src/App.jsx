@@ -1166,6 +1166,20 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+
+                  <div className="item">
+                    <h3>Worker Capacity</h3>
+                    {managerWorkers.slice().sort((a, b) => b.assignedCaseCount - a.assignedCaseCount).slice(0, 8).map((w) => (
+                      <div key={w.id} className="member-row">
+                        <div>
+                          <div className="case-title">{w.fullName}</div>
+                          <div className="muted">{w.email || roleLabel(w.role)}</div>
+                        </div>
+                        <div className="load-pill">{w.assignedCaseCount || 0} cases</div>
+                      </div>
+                    ))}
+                    {managerWorkers.length === 0 ? <div className="muted">No workers available.</div> : null}
+                  </div>
                 </div>
               )}
 
@@ -1184,7 +1198,42 @@ export default function App() {
                 </div>
               )}
 
-              {!(["admin", "case_worker", "gal"].includes(user?.role || "")) && (
+              {(user?.role === "biological_parent" || user?.role === "foster_parent") && (
+                <div className="overview-grid">
+                  <div className="item">
+                    <h3>What’s Coming Up</h3>
+                    {upcomingItems.length === 0 ? <div className="muted">No upcoming events yet.</div> : null}
+                    {upcomingItems.map((ev) => (
+                      <div key={ev.id} className="member-row">
+                        <div>
+                          <div>{ev.label}</div>
+                          <div className="muted">{ev.date.toLocaleDateString()} • {ev.type}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="item">
+                    <h3>Recent Messages</h3>
+                    {messages.slice(0, 6).map((m) => <div key={m.id} className="item">{m.body}</div>)}
+                    {messages.length === 0 ? <div className="muted">No messages yet.</div> : null}
+                  </div>
+                  <div className="item">
+                    <h3>Document Categories</h3>
+                    <div className="row">
+                      {["school", "medical", "court", "visits", "general"].map((cat) => {
+                        const count = documents.filter((d) => (d.category || "general") === cat).length;
+                        return (
+                          <button key={cat} className="secondary" onClick={() => { setDocFilterCategory(cat); setTab("documents"); }}>
+                            {DOC_CATEGORY_META[cat]?.label || cat} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!( ["admin", "case_worker", "gal", "biological_parent", "foster_parent"].includes(user?.role || "")) && (
                 <div className="overview-grid">
                   <div>
                     <h3>Recent Timeline</h3>
