@@ -42,6 +42,8 @@ const devAdminTabs = [
   ["dev_overview", "Overview"],
   ["dev_organizations", "Organizations"],
   ["dev_users", "Users"],
+  ["dev_cases", "Cases"],
+  ["dev_tools", "Tools"],
 ];
 
 const DOC_CATEGORY_META = {
@@ -124,6 +126,12 @@ export default function App() {
   const [devOrgUsers, setDevOrgUsers] = useState([]);
   const [orgAssignRole, setOrgAssignRole] = useState("member");
   const [caseAssignRole, setCaseAssignRole] = useState("case_worker");
+  const [devHealth, setDevHealth] = useState(null);
+  const [devReady, setDevReady] = useState(null);
+  const [editingUserId, setEditingUserId] = useState("");
+  const [editingUserName, setEditingUserName] = useState("");
+  const [editingUserEmail, setEditingUserEmail] = useState("");
+  const [editingUserRole, setEditingUserRole] = useState("case_worker");
   const [newCaseTitle, setNewCaseTitle] = useState("");
   const [newCaseChildFirstName, setNewCaseChildFirstName] = useState("");
   const [newCaseChildLastName, setNewCaseChildLastName] = useState("");
@@ -363,6 +371,33 @@ export default function App() {
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
+  function startEditUser(u) {
+    setEditingUserId(u.id);
+    setEditingUserName(u.fullName || "");
+    setEditingUserEmail(u.email || "");
+    setEditingUserRole(u.role || "case_worker");
+  }
+
+  async function saveEditedUser() {
+    if (!editingUserId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/management/users/${editingUserId}`,
+        method: "PATCH",
+        token,
+        body: {
+          fullName: editingUserName,
+          email: editingUserEmail,
+          role: editingUserRole,
+        },
+      });
+      setEditingUserId("");
+      await Promise.all([loadDevelopmentData(), loadManagerData()]);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
   async function loadDevelopmentData() {
     setLoading(true); setError("");
     try {
@@ -426,6 +461,24 @@ export default function App() {
       });
       await loadDevelopmentData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function runDevHealthChecks() {
+    setLoading(true); setError("");
+    try {
+      const [h, r] = await Promise.all([
+        apiRequest({ baseUrl: apiBase, path: "/health" }),
+        apiRequest({ baseUrl: apiBase, path: "/ready" }),
+      ]);
+      setDevHealth(h);
+      setDevReady(r);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  function clearLocalSession() {
+    localStorage.removeItem("cc_token");
+    localStorage.removeItem("cc_user");
+    signOut();
   }
 
   async function createCase() {
@@ -672,39 +725,15 @@ export default function App() {
                 <h3>Development Overview</h3>
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
               </div>
-              <div className="item table-wrap">
-                <table className="cases-table">
-                  <thead>
-                    <tr>
-                      <th>Case</th>
-                      <th>Organization</th>
-                      <th>Primary Worker</th>
-                      <th>Assign Organization</th>
-                      <th>Assign User</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {devCasesSorted.map((c) => (
-                      <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
-                        <td><div className="case-title">{c.title}</div><div className="muted">{c.id}</div></td>
-                        <td>{c.organizationName || "Unassigned"}</td>
-                        <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
-                        <td>
-                          <select defaultValue="" onChange={(e) => assignCaseToOrganization(c.id, e.target.value)}>
-                            <option value="" disabled>Assign…</option>
-                            {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
-                          </select>
-                        </td>
-                        <td>
-                          <select defaultValue="" onChange={(e) => assignCaseToUser(c.id, e.target.value, caseAssignRole)}>
-                            <option value="" disabled>Assign…</option>
-                            {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="stats-grid">
+                <div className="card stat"><div className="muted">Organizations</div><div className="stat-value">{devCustomers.length}</div></div>
+                <div className="card stat"><div className="muted">Users</div><div className="stat-value">{managerUsers.length}</div></div>
+                <div className="card stat"><div className="muted">Cases</div><div className="stat-value">{devCases.length}</div></div>
+                <div className="card stat"><div className="muted">Unassigned Cases</div><div className="stat-value">{devCases.filter((c)=>!c.primaryCaseWorkerId).length}</div></div>
+              </div>
+              <div className="item">
+                <h3>Quick Notes</h3>
+                <div className="muted">Use Organizations to manage memberships, Users to inspect accounts, Cases to assign ownership, and Tools for diagnostics.</div>
               </div>
             </div>
           )}
@@ -800,19 +829,107 @@ export default function App() {
                 <h3>Users</h3>
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
               </div>
+
+              {editingUserId ? (
+                <div className="item">
+                  <h3>Edit User</h3>
+                  <div className="row">
+                    <input value={editingUserName} onChange={(e) => setEditingUserName(e.target.value)} placeholder="Full name" />
+                    <input value={editingUserEmail} onChange={(e) => setEditingUserEmail(e.target.value)} placeholder="Email" />
+                    <select value={editingUserRole} onChange={(e) => setEditingUserRole(e.target.value)}>
+                      <option value="admin">{roleLabel("admin")}</option>
+                      <option value="dev_admin">{roleLabel("dev_admin")}</option>
+                      <option value="case_worker">{roleLabel("case_worker")}</option>
+                      <option value="foster_parent">{roleLabel("foster_parent")}</option>
+                      <option value="biological_parent">{roleLabel("biological_parent")}</option>
+                      <option value="gal">{roleLabel("gal")}</option>
+                    </select>
+                  </div>
+                  <div className="row">
+                    <button onClick={saveEditedUser}>Save User</button>
+                    <button className="secondary" onClick={() => setEditingUserId("")}>Cancel</button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="item table-wrap">
                 <table className="cases-table">
-                  <thead><tr><th>Name</th><th>Email</th><th>Global Role</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Email</th><th>Global Role</th><th>Action</th></tr></thead>
                   <tbody>
                     {managerUsers.map((u) => (
                       <tr key={u.id}>
                         <td>{u.fullName}</td>
                         <td>{u.email}</td>
                         <td>{roleLabel(u.role)}</td>
+                        <td><button className="secondary" onClick={() => startEditUser(u)}>Edit</button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {tab === "dev_cases" && (
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>All Cases (Platform)</h3>
+                <button className="secondary" onClick={loadDevelopmentData}>Refresh Cases</button>
+              </div>
+              <div className="item table-wrap">
+                <table className="cases-table">
+                  <thead>
+                    <tr>
+                      <th>Case</th>
+                      <th>Organization</th>
+                      <th>Primary Worker</th>
+                      <th>Assign Organization</th>
+                      <th>Assign User</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {devCasesSorted.map((c) => (
+                      <tr key={c.id} className={!c.primaryCaseWorkerId ? "row-unassigned" : ""}>
+                        <td><div className="case-title">{c.title}</div><div className="muted">{c.id}</div></td>
+                        <td>{c.organizationName || "Unassigned"}</td>
+                        <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
+                        <td>
+                          <select defaultValue="" onChange={(e) => assignCaseToOrganization(c.id, e.target.value)}>
+                            <option value="" disabled>Assign…</option>
+                            {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select defaultValue="" onChange={(e) => assignCaseToUser(c.id, e.target.value, caseAssignRole)}>
+                            <option value="" disabled>Assign…</option>
+                            {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {tab === "dev_tools" && (
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>Developer Tools</h3>
+                <button className="secondary" onClick={runDevHealthChecks}>Run Health Checks</button>
+              </div>
+              <div className="item">
+                <div className="row">
+                  <button className="secondary" onClick={clearLocalSession}>Clear Local Session</button>
+                  <button className="secondary" onClick={() => window.location.reload()}>Hard Refresh App</button>
+                </div>
+                <div className="muted">Use this page for quick diagnostics and session cleanup during testing.</div>
+              </div>
+              <div className="item">
+                <h3>API Status</h3>
+                <div className="muted">/health: {devHealth ? JSON.stringify(devHealth) : "Not run yet"}</div>
+                <div className="muted">/ready: {devReady ? JSON.stringify(devReady) : "Not run yet"}</div>
               </div>
             </div>
           )}

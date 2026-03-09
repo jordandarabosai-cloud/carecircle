@@ -459,6 +459,47 @@ app.patch("/management/users/:userId/role", requireRole("admin", "dev_admin"), a
   });
 });
 
+app.patch("/management/users/:userId", requireRole("admin", "dev_admin"), async (req, res) => {
+  const { userId } = req.params;
+  const { fullName, email, role } = req.body || {};
+
+  if (!fullName && !email && !role) {
+    return res.status(400).json({ error: "Provide at least one field: fullName, email, role" });
+  }
+
+  if (role && !VALID_ROLES.has(role)) {
+    return res.status(400).json({ error: "Invalid role" });
+  }
+
+  const updated = await query(
+    `UPDATE users
+     SET
+       full_name = COALESCE($2, full_name),
+       email = COALESCE($3, email),
+       role = COALESCE($4, role)
+     WHERE id = $1
+     RETURNING id, email, full_name, role`,
+    [
+      userId,
+      fullName ? String(fullName).trim() : null,
+      email ? String(email).trim().toLowerCase() : null,
+      role || null,
+    ]
+  );
+
+  if (!updated.rowCount) return res.status(404).json({ error: "User not found" });
+
+  const user = updated.rows[0];
+  return res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      role: user.role,
+    },
+  });
+});
+
 app.get("/development/customers", requireRole("dev_admin"), async (_req, res) => {
   const result = await query(
     `SELECT c.id, c.name, c.created_at,
