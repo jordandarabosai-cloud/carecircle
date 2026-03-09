@@ -138,6 +138,10 @@ export default function App() {
   const [editingUserEmail, setEditingUserEmail] = useState("");
   const [editingUserPhone, setEditingUserPhone] = useState("");
   const [editingUserRole, setEditingUserRole] = useState("case_worker");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPhone, setNewUserPhone] = useState("");
+  const [newUserRole, setNewUserRole] = useState("case_worker");
   const [newCaseTitle, setNewCaseTitle] = useState("");
   const [newCaseChildFirstName, setNewCaseChildFirstName] = useState("");
   const [newCaseChildLastName, setNewCaseChildLastName] = useState("");
@@ -443,6 +447,30 @@ export default function App() {
         body: { role },
       });
       await loadManagerData();
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function createUser() {
+    if (!newUserName.trim() || !newUserEmail.trim()) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: "/management/users",
+        method: "POST",
+        token,
+        body: {
+          fullName: newUserName,
+          email: newUserEmail,
+          phoneNumber: newUserPhone,
+          role: newUserRole,
+        },
+      });
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPhone("");
+      setNewUserRole("case_worker");
+      await Promise.all([loadDevelopmentData(), loadManagerData()]);
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
@@ -1070,6 +1098,24 @@ export default function App() {
               <div className="row between">
                 <h3>Users</h3>
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
+              </div>
+
+              <div className="item">
+                <h3>Create User</h3>
+                <div className="row">
+                  <input value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Full name" />
+                  <input value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
+                  <input value={newUserPhone} onChange={(e) => setNewUserPhone(e.target.value)} placeholder="Phone number" />
+                  <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
+                    <option value="admin">{roleLabel("admin")}</option>
+                    <option value="dev_admin">{roleLabel("dev_admin")}</option>
+                    <option value="case_worker">{roleLabel("case_worker")}</option>
+                    <option value="foster_parent">{roleLabel("foster_parent")}</option>
+                    <option value="biological_parent">{roleLabel("biological_parent")}</option>
+                    <option value="gal">{roleLabel("gal")}</option>
+                  </select>
+                  <button onClick={createUser}>Create User</button>
+                </div>
               </div>
 
               <div className="item table-wrap">

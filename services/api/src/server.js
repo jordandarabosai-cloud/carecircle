@@ -461,6 +461,43 @@ app.patch("/management/users/:userId/role", requireRole("admin", "dev_admin"), a
   });
 });
 
+app.post("/management/users", requireRole("admin", "dev_admin"), async (req, res) => {
+  const { fullName, email, phoneNumber, role } = req.body || {};
+
+  if (!fullName || !String(fullName).trim()) return res.status(400).json({ error: "fullName is required" });
+  if (!email || !String(email).trim()) return res.status(400).json({ error: "email is required" });
+
+  const safeRole = role && VALID_ROLES.has(role) ? role : "case_worker";
+  const safeEmail = String(email).trim().toLowerCase();
+
+  const existing = await query("SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1", [safeEmail]);
+  if (existing.rowCount) return res.status(409).json({ error: "User with this email already exists" });
+
+  const inserted = await query(
+    `INSERT INTO users(id, email, full_name, phone_number, role)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, email, full_name, phone_number, role`,
+    [
+      randomUUID(),
+      safeEmail,
+      String(fullName).trim(),
+      phoneNumber ? String(phoneNumber).trim() : null,
+      safeRole,
+    ]
+  );
+
+  const user = inserted.rows[0];
+  return res.status(201).json({
+    user: {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      phoneNumber: user.phone_number,
+      role: user.role,
+    },
+  });
+});
+
 app.patch("/management/users/:userId", requireRole("admin", "dev_admin"), async (req, res) => {
   const { userId } = req.params;
   const { fullName, email, phoneNumber, role } = req.body || {};
