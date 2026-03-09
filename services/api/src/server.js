@@ -552,23 +552,27 @@ app.post("/development/customers/:customerId/users/assign", requireRole("dev_adm
   });
 });
 
-app.get("/development/organizations", requireRole("dev_admin"), async (_req, res) => {
+app.get("/development/organizations", requireRole("dev_admin"), async (req, res) => {
+  const includeArchived = String(req.query?.includeArchived || "false").toLowerCase() === "true";
+
   const result = await query(
-    `SELECT c.id, c.name, c.created_at,
+    `SELECT c.id, c.name, c.created_at, c.archived_at,
             COUNT(cu.user_id)::int AS user_count,
             COUNT(cs.id)::int AS case_count
      FROM customers c
      LEFT JOIN customer_users cu ON cu.customer_id = c.id
      LEFT JOIN cases cs ON cs.customer_id = c.id
-     WHERE c.archived_at IS NULL
-     GROUP BY c.id, c.name, c.created_at
-     ORDER BY c.name ASC`
+     WHERE ($1::boolean = true OR c.archived_at IS NULL)
+     GROUP BY c.id, c.name, c.created_at, c.archived_at
+     ORDER BY c.archived_at NULLS FIRST, c.name ASC`,
+    [includeArchived]
   );
 
   const organizations = result.rows.map((r) => ({
     id: r.id,
     name: r.name,
     createdAt: r.created_at,
+    archivedAt: r.archived_at,
     userCount: r.user_count,
     caseCount: r.case_count,
   }));
@@ -637,6 +641,18 @@ app.post("/development/organizations/:customerId/archive", requireRole("dev_admi
 
   if (!archived.rowCount) return res.status(404).json({ error: "Organization not found" });
   return res.json({ archived: true, organizationId: archived.rows[0].id, name: archived.rows[0].name });
+});
+
+app.post("/development/organizations/:customerId/restore", requireRole("dev_admin"), async (req, res) => {
+  const { customerId } = req.params;
+
+  const restored = await query(
+    `UPDATE customers SET archived_at = NULL WHERE id = $1 AND archived_at IS NOT NULL RETURNING id, name`,
+    [customerId]
+  );
+
+  if (!restored.rowCount) return res.status(404).json({ error: "Archived organization not found" });
+  return res.json({ restored: true, organizationId: restored.rows[0].id, name: restored.rows[0].name });
 });
 
 app.get("/development/organizations/:customerId/users", requireRole("dev_admin"), async (req, res) => {

@@ -130,6 +130,7 @@ export default function App() {
   const [devHealth, setDevHealth] = useState(null);
   const [devReady, setDevReady] = useState(null);
   const [newOrganizationName, setNewOrganizationName] = useState("");
+  const [showArchivedOrganizations, setShowArchivedOrganizations] = useState(false);
   const [editingOrganizationId, setEditingOrganizationId] = useState("");
   const [editingOrganizationName, setEditingOrganizationName] = useState("");
   const [editingUserId, setEditingUserId] = useState("");
@@ -290,6 +291,13 @@ export default function App() {
     run();
   }, [tab, token, devSelectedOrgId, apiBase]);
 
+  useEffect(() => {
+    if (tab.startsWith("dev_") && token) {
+      loadDevelopmentData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showArchivedOrganizations]);
+
   async function requestCode() {
     setLoading(true); setError("");
     try {
@@ -409,7 +417,7 @@ export default function App() {
     setLoading(true); setError("");
     try {
       const [organizations, users, allCases] = await Promise.all([
-        apiRequest({ baseUrl: apiBase, path: "/development/organizations", token }),
+        apiRequest({ baseUrl: apiBase, path: `/development/organizations?includeArchived=${showArchivedOrganizations ? "true" : "false"}`, token }),
         apiRequest({ baseUrl: apiBase, path: "/management/users", token }),
         apiRequest({ baseUrl: apiBase, path: "/development/cases", token }),
       ]);
@@ -475,6 +483,20 @@ export default function App() {
         setDevSelectedOrgId("");
         setDevOrgUsers([]);
       }
+      await loadDevelopmentData();
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
+  }
+
+  async function restoreOrganization(orgId) {
+    if (!orgId) return;
+    setLoading(true); setError("");
+    try {
+      await apiRequest({
+        baseUrl: apiBase,
+        path: `/development/organizations/${orgId}/restore`,
+        method: "POST",
+        token,
+      });
       await loadDevelopmentData();
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
@@ -890,7 +912,12 @@ export default function App() {
             <div className="cases-wrap">
               <div className="row between">
                 <h3>Organizations</h3>
-                <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
+                <div className="row">
+                  <button className="secondary" onClick={() => setShowArchivedOrganizations((v) => !v)}>
+                    {showArchivedOrganizations ? "Hide Archived" : "Show Archived"}
+                  </button>
+                  <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
+                </div>
               </div>
 
               <div className="item">
@@ -930,18 +957,24 @@ export default function App() {
                   <tbody>
                     {devCustomers.map((c) => (
                       <tr key={c.id} className={devSelectedOrgId === c.id ? "row-selected" : ""}>
-                        <td><div className="case-title">{c.name}</div></td>
+                        <td><div className="case-title">{c.name}</div>{c.archivedAt ? <div className="muted">Archived</div> : null}</td>
                         <td>{c.userCount}</td>
                         <td>{c.caseCount}</td>
                         <td>
                           <div className="row">
                             <button className="secondary" onClick={() => setDevSelectedOrgId(c.id)}>View Members</button>
-                            <button className="secondary" onClick={() => startEditOrganization(c)}>Edit</button>
-                            <button className="secondary" onClick={() => archiveOrganization(c.id)}>Archive</button>
-                            <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value, orgAssignRole)}>
-                              <option value="" disabled>Assign user…</option>
-                              {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}
-                            </select>
+                            <button className="secondary" onClick={() => startEditOrganization(c)} disabled={!!c.archivedAt}>Edit</button>
+                            {c.archivedAt ? (
+                              <button className="secondary" onClick={() => restoreOrganization(c.id)}>Restore</button>
+                            ) : (
+                              <button className="secondary" onClick={() => archiveOrganization(c.id)}>Archive</button>
+                            )}
+                            {!c.archivedAt ? (
+                              <select defaultValue="" onChange={(e) => assignUserToCustomer(c.id, e.target.value, orgAssignRole)}>
+                                <option value="" disabled>Assign user…</option>
+                                {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}
+                              </select>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
