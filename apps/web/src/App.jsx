@@ -150,6 +150,7 @@ export default function App() {
   const [newCaseStatus, setNewCaseStatus] = useState("open");
   const [newCaseSummary, setNewCaseSummary] = useState("");
   const [newCaseOrganizationId, setNewCaseOrganizationId] = useState("");
+  const [editingCaseId, setEditingCaseId] = useState("");
 
   const [devOverviewCaseSearch, setDevOverviewCaseSearch] = useState("");
   const [devOverviewCaseStatusFilter, setDevOverviewCaseStatusFilter] = useState("all");
@@ -670,6 +671,53 @@ export default function App() {
       if (prev.length <= 1) return [{ firstName: "", lastName: "" }];
       return prev.filter((_, i) => i !== index);
     });
+  }
+
+  function startEditingCase(c, { includeOrganization = false } = {}) {
+    setEditingCaseId(c.id);
+    setNewCaseTitle(c.title || "");
+    const children = Array.isArray(c.children) && c.children.length
+      ? c.children.map((child) => ({ firstName: child.firstName || "", lastName: child.lastName || "" }))
+      : [{ firstName: c.childFirstName || "", lastName: c.childLastName || "" }];
+    setNewCaseChildren(children.length ? children : [{ firstName: "", lastName: "" }]);
+    setNewCaseBioParentName(c.biologicalParentName || "");
+    setNewCaseFosterParentName(c.fosterParentName || "");
+    setNewCasePriority(c.priority || "normal");
+    setNewCaseStatus(c.status || "open");
+    setNewCaseSummary(c.summary || "");
+    if (includeOrganization) {
+      setNewCaseOrganizationId(c.organizationId || "unassigned");
+    }
+  }
+
+  function cancelEditingCase() {
+    setEditingCaseId("");
+  }
+
+  async function saveCaseEdits({ includeOrganization = false } = {}) {
+    if (!editingCaseId || !newCaseTitle.trim()) return;
+    const normalizedChildren = newCaseChildren
+      .map((c) => ({ firstName: (c.firstName || "").trim(), lastName: (c.lastName || "").trim() }))
+      .filter((c) => c.firstName || c.lastName);
+
+    setLoading(true); setError("");
+    try {
+      const body = {
+        title: newCaseTitle.trim(),
+        children: normalizedChildren,
+        biologicalParentName: newCaseBioParentName || null,
+        fosterParentName: newCaseFosterParentName || null,
+        priority: newCasePriority,
+        status: newCaseStatus,
+        summary: (newCaseSummary || "").trim() || null,
+      };
+      if (includeOrganization) body.organizationId = newCaseOrganizationId === "unassigned" ? null : (newCaseOrganizationId || null);
+
+      await apiRequest({ baseUrl: apiBase, path: `/cases/${editingCaseId}`, method: "PATCH", token, body });
+
+      setEditingCaseId("");
+      await Promise.all([refreshCases(), loadManagerData(), ...(user?.role === "dev_admin" ? [loadDevelopmentData()] : [])]);
+    } catch (e) { setError(e.message); } finally { setLoading(false); }
   }
 
   async function createCase() {
@@ -1241,6 +1289,43 @@ export default function App() {
                 <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
               </div>
 
+              {editingCaseId ? (
+                <div className="item">
+                  <h3>Edit Case (Platform)</h3>
+                  <div className="row">
+                    <select value={newCaseOrganizationId} onChange={(e) => setNewCaseOrganizationId(e.target.value)}>
+                      <option value="">Select organization…</option>
+                      <option value="unassigned">Unassigned</option>
+                      {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+                    </select>
+                    <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
+                    <button onClick={() => saveCaseEdits({ includeOrganization: true })}>Save Changes</button>
+                    <button className="secondary" type="button" onClick={cancelEditingCase}>Cancel</button>
+                  </div>
+                  {newCaseChildren.map((child, idx) => (
+                    <div className="row" key={`edit-case-child-${idx}`}>
+                      <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
+                      <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                      <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)} disabled={newCaseChildren.length === 1}>Remove</button>
+                    </div>
+                  ))}
+                  <div className="row">
+                    <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
+                    <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                    <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                  </div>
+                  <div className="row">
+                    <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
+                      <option value="low">low</option><option value="normal">normal</option><option value="high">high</option><option value="urgent">urgent</option>
+                    </select>
+                    <select value={newCaseStatus} onChange={(e) => setNewCaseStatus(e.target.value)}>
+                      <option value="open">open</option><option value="active">active</option><option value="closed">closed</option>
+                    </select>
+                  </div>
+                  <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
+                </div>
+              ) : null}
+
               <div className="item table-wrap">
                 <div className="row" style={{ marginBottom: 8 }}>
                   <input value={devCaseSearch} onChange={(e) => setDevCaseSearch(e.target.value)} placeholder="Search cases…" />
@@ -1258,6 +1343,7 @@ export default function App() {
                       <th>Primary Worker</th>
                       <th>Assign Organization</th>
                       <th>Assign User</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1277,6 +1363,9 @@ export default function App() {
                             <option value="" disabled>Assign…</option>
                             {managerUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName} — {roleLabel(u.role)}</option>)}
                           </select>
+                        </td>
+                        <td>
+                          <button className="secondary" type="button" onClick={() => startEditingCase(c, { includeOrganization: true })}>Edit</button>
                         </td>
                       </tr>
                     ))}
@@ -1349,6 +1438,43 @@ export default function App() {
                 <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
               </div>
 
+              {editingCaseId ? (
+                <div className="item">
+                  <h3>Edit Case</h3>
+                  <div className="row">
+                    <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
+                    <button onClick={() => saveCaseEdits({ includeOrganization: false })}>Save Changes</button>
+                    <button className="secondary" type="button" onClick={cancelEditingCase}>Cancel</button>
+                  </div>
+                  {newCaseChildren.map((child, idx) => (
+                    <div className="row" key={`manager-edit-case-child-${idx}`}>
+                      <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
+                      <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                      <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)} disabled={newCaseChildren.length === 1}>Remove</button>
+                    </div>
+                  ))}
+                  <div className="row">
+                    <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
+                    <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                    <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                  </div>
+                  <div className="row">
+                    <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
+                      <option value="low">low</option>
+                      <option value="normal">normal</option>
+                      <option value="high">high</option>
+                      <option value="urgent">urgent</option>
+                    </select>
+                    <select value={newCaseStatus} onChange={(e) => setNewCaseStatus(e.target.value)}>
+                      <option value="open">open</option>
+                      <option value="active">active</option>
+                      <option value="closed">closed</option>
+                    </select>
+                  </div>
+                  <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
+                </div>
+              ) : null}
+
               <div className="cases-grid">
                 {managerCases.map((mc) => (
                   <div key={mc.id} className="item case-card">
@@ -1366,6 +1492,7 @@ export default function App() {
                           <option key={w.id} value={w.id}>{w.fullName} ({w.assignedCaseCount})</option>
                         ))}
                       </select>
+                      <button className="secondary" type="button" onClick={() => startEditingCase(mc, { includeOrganization: false })}>Edit</button>
                     </div>
                   </div>
                 ))}

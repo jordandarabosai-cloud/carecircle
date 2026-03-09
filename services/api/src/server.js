@@ -384,6 +384,8 @@ app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), a
 
   const result = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.priority, c.status, c.summary,
             u.full_name AS primary_case_worker_name,
             u.id AS primary_case_worker_id,
             (SELECT COUNT(*)::int FROM case_members cm2 WHERE cm2.case_id = c.id) AS member_count
@@ -401,11 +403,40 @@ app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), a
     [canBypassCustomerScope(req), req.auth.customerIds || []]
   );
 
+  const caseIds = result.rows.map((r) => r.id);
+  const childrenResult = caseIds.length
+    ? await query(
+      `SELECT case_id, first_name, last_name, sort_order
+       FROM case_children
+       WHERE case_id = ANY($1::uuid[])
+       ORDER BY case_id ASC, sort_order ASC, created_at ASC`,
+      [caseIds]
+    )
+    : { rows: [] };
+
+  const childrenByCaseId = new Map();
+  for (const row of childrenResult.rows) {
+    if (!childrenByCaseId.has(row.case_id)) childrenByCaseId.set(row.case_id, []);
+    childrenByCaseId.get(row.case_id).push({
+      firstName: row.first_name,
+      lastName: row.last_name,
+      sortOrder: row.sort_order,
+    });
+  }
+
   const cases = result.rows.map((r) => ({
     id: r.id,
     title: r.title,
     createdAt: r.created_at,
     createdBy: r.created_by,
+    childFirstName: r.child_first_name,
+    childLastName: r.child_last_name,
+    children: childrenByCaseId.get(r.id) || [],
+    biologicalParentName: r.biological_parent_name,
+    fosterParentName: r.foster_parent_name,
+    priority: r.priority,
+    status: r.status,
+    summary: r.summary,
     primaryCaseWorkerId: r.primary_case_worker_id,
     primaryCaseWorkerName: r.primary_case_worker_name,
     memberCount: r.member_count,
@@ -777,6 +808,8 @@ app.post("/development/organizations/:customerId/users/assign", requireRole("dev
 app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
   const result = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by, c.customer_id,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.priority, c.status, c.summary,
             cust.name AS organization_name,
             u.id AS primary_case_worker_id,
             u.full_name AS primary_case_worker_name
@@ -793,6 +826,27 @@ app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
      ORDER BY c.created_at DESC`
   );
 
+  const caseIds = result.rows.map((r) => r.id);
+  const childrenResult = caseIds.length
+    ? await query(
+      `SELECT case_id, first_name, last_name, sort_order
+       FROM case_children
+       WHERE case_id = ANY($1::uuid[])
+       ORDER BY case_id ASC, sort_order ASC, created_at ASC`,
+      [caseIds]
+    )
+    : { rows: [] };
+
+  const childrenByCaseId = new Map();
+  for (const row of childrenResult.rows) {
+    if (!childrenByCaseId.has(row.case_id)) childrenByCaseId.set(row.case_id, []);
+    childrenByCaseId.get(row.case_id).push({
+      firstName: row.first_name,
+      lastName: row.last_name,
+      sortOrder: row.sort_order,
+    });
+  }
+
   const cases = result.rows.map((r) => ({
     id: r.id,
     title: r.title,
@@ -800,6 +854,14 @@ app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
     createdBy: r.created_by,
     organizationId: r.customer_id,
     organizationName: r.organization_name,
+    childFirstName: r.child_first_name,
+    childLastName: r.child_last_name,
+    children: childrenByCaseId.get(r.id) || [],
+    biologicalParentName: r.biological_parent_name,
+    fosterParentName: r.foster_parent_name,
+    priority: r.priority,
+    status: r.status,
+    summary: r.summary,
     primaryCaseWorkerId: r.primary_case_worker_id,
     primaryCaseWorkerName: r.primary_case_worker_name,
   }));
@@ -1042,6 +1104,130 @@ app.post("/cases", async (req, res) => {
       childFirstName: record.child_first_name,
       childLastName: record.child_last_name,
       children: normalizedChildren,
+      biologicalParentName: record.biological_parent_name,
+      fosterParentName: record.foster_parent_name,
+      priority: record.priority,
+      status: record.status,
+      summary: record.summary,
+    },
+  });
+});
+
+app.patch("/cases/:caseId", requireRole("admin", "case_worker", "dev_admin"), async (req, res) => {
+  const { caseId } = req.params;
+  const existing = await query("SELECT id, customer_id FROM cases WHERE id = $1 LIMIT 1", [caseId]);
+  if (!existing.rowCount) return res.status(404).json({ error: "Case not found" });
+
+  const currentCustomerId = existing.rows[0].customer_id;
+  if (currentCustomerId && !inCustomerScope(req, currentCustomerId)) return res.status(403).json({ error: "Organization scope violation" });
+  const canManage = req.auth.role === "admin" || req.auth.role === "dev_admin" || (await canAccessCase(query, req.auth.userId, caseId));
+  if (!canManage) return res.status(403).json({ error: "Cannot edit this case" });
+
+  const {
+    title,
+    organizationId,
+    childFirstName,
+    childLastName,
+    children,
+    biologicalParentName,
+    fosterParentName,
+    priority,
+    status,
+    summary,
+  } = req.body || {};
+
+  if (title !== undefined && !String(title || "").trim()) {
+    return res.status(400).json({ error: "title cannot be empty" });
+  }
+
+  const updates = [];
+  const values = [];
+  const setField = (column, value) => {
+    values.push(value);
+    updates.push(`${column} = $${values.length}`);
+  };
+
+  if (title !== undefined) setField("title", String(title || "").trim());
+  if (biologicalParentName !== undefined) setField("biological_parent_name", biologicalParentName || null);
+  if (fosterParentName !== undefined) setField("foster_parent_name", fosterParentName || null);
+  if (priority !== undefined) setField("priority", ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal");
+  if (status !== undefined) setField("status", ["open", "active", "closed"].includes(status) ? status : "open");
+  if (summary !== undefined) setField("summary", summary || null);
+
+  const parsedChildren = Array.isArray(children)
+    ? children
+    : (childFirstName !== undefined || childLastName !== undefined ? [{ firstName: childFirstName, lastName: childLastName }] : null);
+  const normalizedChildren = Array.isArray(parsedChildren)
+    ? parsedChildren
+      .map((c) => ({ firstName: String(c?.firstName || "").trim(), lastName: String(c?.lastName || "").trim() }))
+      .filter((c) => c.firstName || c.lastName)
+    : null;
+
+  if (normalizedChildren) {
+    const primaryChild = normalizedChildren[0] || { firstName: "", lastName: "" };
+    setField("child_first_name", primaryChild.firstName || null);
+    setField("child_last_name", primaryChild.lastName || null);
+  }
+
+  if (organizationId !== undefined) {
+    if (req.auth.role !== "dev_admin") return res.status(403).json({ error: "Only development admins can change organization" });
+    if (organizationId === null || organizationId === "unassigned") {
+      setField("customer_id", null);
+    } else {
+      const org = await query("SELECT id FROM customers WHERE id = $1 LIMIT 1", [organizationId]);
+      if (!org.rowCount) return res.status(404).json({ error: "Organization not found" });
+      setField("customer_id", organizationId);
+    }
+  }
+
+  if (updates.length) {
+    values.push(caseId);
+    await query(`UPDATE cases SET ${updates.join(", ")} WHERE id = $${values.length}`, values);
+  }
+
+  if (normalizedChildren) {
+    await query("DELETE FROM case_children WHERE case_id = $1", [caseId]);
+    for (let i = 0; i < normalizedChildren.length; i += 1) {
+      const child = normalizedChildren[i];
+      // eslint-disable-next-line no-await-in-loop
+      await query(
+        `INSERT INTO case_children(id, case_id, first_name, last_name, sort_order)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [randomUUID(), caseId, child.firstName || null, child.lastName || null, i]
+      );
+    }
+  }
+
+  const row = await query(
+    `SELECT c.id, c.title, c.created_at, c.created_by, c.customer_id,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.priority, c.status, c.summary
+     FROM cases c
+     WHERE c.id = $1
+     LIMIT 1`,
+    [caseId]
+  );
+  const childrenRows = await query(
+    `SELECT first_name, last_name, sort_order
+     FROM case_children
+     WHERE case_id = $1
+     ORDER BY sort_order ASC, created_at ASC`,
+    [caseId]
+  );
+
+  const record = row.rows[0];
+  await req.audit({ caseId, action: "case.update", resourceType: "case", resourceId: caseId, meta: { updatedFields: updates.length } });
+
+  return res.json({
+    case: {
+      id: record.id,
+      title: record.title,
+      createdAt: record.created_at,
+      createdBy: record.created_by,
+      organizationId: record.customer_id,
+      childFirstName: record.child_first_name,
+      childLastName: record.child_last_name,
+      children: childrenRows.rows.map((c) => ({ firstName: c.first_name, lastName: c.last_name, sortOrder: c.sort_order })),
       biologicalParentName: record.biological_parent_name,
       fosterParentName: record.foster_parent_name,
       priority: record.priority,
