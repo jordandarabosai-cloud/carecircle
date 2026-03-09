@@ -39,6 +39,8 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 .sidebar-section { display: grid; gap: 8px; }
 .sidebar-label { color: #d1fae5; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .sidebar-section select { width: 100%; }
+.hamburger-toggle { display: none; width: 100%; text-align: left; background: rgba(255,255,255,.15); color: #ecfeff; border: 1px solid rgba(255,255,255,.25); }
+.menu-panel { display: grid; gap: 12px; }
 
 .main { padding: 22px; display: grid; gap: 16px; }
 .card { background: var(--cc-surface); border: 1px solid var(--cc-border); border-radius: 14px; padding: 16px; box-shadow: var(--cc-shadow); }
@@ -124,8 +126,11 @@ button.chip.cat-general { background: #f8fafc; color: #334155; border-color: #cb
 @media (max-width: 1100px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { border-bottom: 1px solid rgba(255,255,255,.1); }
-  .tab-list { grid-template-columns: repeat(3, minmax(0,1fr)); }
-  button.tab { text-align: center; }
+  .hamburger-toggle { display: block; }
+  .menu-panel { display: none; }
+  .menu-panel.open { display: grid; }
+  .tab-list { grid-template-columns: 1fr; }
+  button.tab { text-align: left; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .overview-grid { grid-template-columns: 1fr; }
   .cases-grid { grid-template-columns: 1fr; }

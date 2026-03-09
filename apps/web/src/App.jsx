@@ -117,6 +117,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [caseSearch, setCaseSearch] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [managerCases, setManagerCases] = useState([]);
   const [managerWorkers, setManagerWorkers] = useState([]);
   const [managerUsers, setManagerUsers] = useState([]);
@@ -640,22 +641,28 @@ export default function App() {
           <div className="muted">{roleLabel(user?.role)}</div>
         </div>
 
-        {user?.role !== "dev_admin" && (
-          <div className="sidebar-section">
-            <label className="sidebar-label">Current Case</label>
-            <select value={caseId} onChange={(e) => setCaseId(e.target.value)}>
-              {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-            <button className="secondary" onClick={() => refreshCases()}>Refresh Cases</button>
-          </div>
-        )}
+        <button className="hamburger-toggle" onClick={() => setMenuOpen((v) => !v)}>
+          ☰ Menu ({tabs.find(([k]) => k === tab)?.[1] || "Overview"})
+        </button>
 
-        <div className="tab-list">
-          {tabs.map(([k, label]) => (
-            <button key={k} className={tab === k ? "tab active" : "tab"} onClick={() => setTab(k)}>{label}</button>
-          ))}
+        <div className={menuOpen ? "menu-panel open" : "menu-panel"}>
+          {user?.role !== "dev_admin" && (
+            <div className="sidebar-section">
+              <label className="sidebar-label">Current Case</label>
+              <select value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+                {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+              <button className="secondary" onClick={() => refreshCases()}>Refresh Cases</button>
+            </div>
+          )}
+
+          <div className="tab-list">
+            {tabs.map(([k, label]) => (
+              <button key={k} className={tab === k ? "tab active" : "tab"} onClick={() => { setTab(k); setMenuOpen(false); }}>{label}</button>
+            ))}
+          </div>
+          <button className="secondary" onClick={signOut}>Sign out</button>
         </div>
-        <button className="secondary" onClick={signOut}>Sign out</button>
       </aside>
 
       <main className="main">
