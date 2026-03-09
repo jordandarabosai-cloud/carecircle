@@ -1125,14 +1125,101 @@ export default function App() {
           )}
 
           {tab === "overview" && (
-            <div className="overview-grid">
-              <div>
-                <h3>Recent Timeline</h3>
-                {timeline.slice(0, 5).map((e) => <div key={e.id} className="item">[{e.type}] {e.text}</div>)}
+            <div className="cases-wrap">
+              <div className="row between">
+                <h3>{user?.role === "admin" ? "Admin Overview" : user?.role === "case_worker" ? "Case Worker Overview" : user?.role === "gal" ? "GAL Overview" : "Overview"}</h3>
+                <button className="secondary" onClick={loadWorkspace}>Refresh</button>
               </div>
-              <div>
-                <h3>Tasks Needing Attention</h3>
-                {tasks.filter((t) => t.status !== "done").slice(0, 5).map((t) => <div key={t.id} className="item">{t.title} <span className="muted">({t.status})</span></div>)}
+
+              <div className="stats-grid">
+                <div className="card stat"><div className="muted">My Cases</div><div className="stat-value">{cases.length}</div></div>
+                <div className="card stat"><div className="muted">Open Tasks</div><div className="stat-value">{openTasks}</div></div>
+                <div className="card stat"><div className="muted">Messages</div><div className="stat-value">{messages.length}</div></div>
+                <div className="card stat"><div className="muted">Documents</div><div className="stat-value">{documents.length}</div></div>
+              </div>
+
+              {(user?.role === "admin" || user?.role === "case_worker") && (
+                <div className="overview-grid">
+                  <div className="item">
+                    <h3>Case Assignment Queue</h3>
+                    {managerCases.filter((c) => !c.primaryCaseWorkerId).slice(0, 8).map((c) => (
+                      <div key={c.id} className="member-row">
+                        <div>
+                          <div className="case-title">{c.title}</div>
+                          <div className="muted">{c.primaryCaseWorkerName || "Unassigned"}</div>
+                        </div>
+                        <button className="secondary" onClick={() => setTab("manager")}>Assign</button>
+                      </div>
+                    ))}
+                    {managerCases.filter((c) => !c.primaryCaseWorkerId).length === 0 ? <div className="muted">No unassigned cases.</div> : null}
+                  </div>
+
+                  <div className="item">
+                    <h3>Upcoming Schedule</h3>
+                    {upcomingItems.length === 0 ? <div className="muted">No upcoming items.</div> : null}
+                    {upcomingItems.map((ev) => (
+                      <div key={ev.id} className="member-row">
+                        <div>
+                          <div>{ev.label}</div>
+                          <div className="muted">{ev.date.toLocaleDateString()} • {ev.type}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {user?.role === "gal" && (
+                <div className="overview-grid">
+                  <div className="item">
+                    <h3>Recent Timeline</h3>
+                    {timeline.slice(0, 8).map((e) => <div key={e.id} className="item">[{e.type}] {e.text}</div>)}
+                    {timeline.length === 0 ? <div className="muted">No timeline updates yet.</div> : null}
+                  </div>
+                  <div className="item">
+                    <h3>Tasks Needing Attention</h3>
+                    {tasks.filter((t) => t.status !== "done").slice(0, 8).map((t) => <div key={t.id} className="item">{t.title} <span className="muted">({t.status})</span></div>)}
+                    {tasks.filter((t) => t.status !== "done").length === 0 ? <div className="muted">No open tasks.</div> : null}
+                  </div>
+                </div>
+              )}
+
+              {!(["admin", "case_worker", "gal"].includes(user?.role || "")) && (
+                <div className="overview-grid">
+                  <div>
+                    <h3>Recent Timeline</h3>
+                    {timeline.slice(0, 5).map((e) => <div key={e.id} className="item">[{e.type}] {e.text}</div>)}
+                  </div>
+                  <div>
+                    <h3>Tasks Needing Attention</h3>
+                    {tasks.filter((t) => t.status !== "done").slice(0, 5).map((t) => <div key={t.id} className="item">{t.title} <span className="muted">({t.status})</span></div>)}
+                  </div>
+                </div>
+              )}
+
+              <div className="item table-wrap">
+                <h3>My Active Cases</h3>
+                <table className="cases-table">
+                  <thead>
+                    <tr>
+                      <th>Case</th>
+                      <th>Primary Worker</th>
+                      <th>Open Tasks</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cases.slice(0, 10).map((c) => (
+                      <tr key={c.id}>
+                        <td><div className="case-title">{c.title}</div><div className="muted">{c.id}</div></td>
+                        <td>{c.primaryCaseWorkerName || "Unassigned"}</td>
+                        <td>{tasks.filter((t) => t.caseId === c.id && t.status !== "done").length}</td>
+                        <td><button className="secondary" onClick={() => { setCaseId(c.id); setTab("timeline"); }}>Open</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {cases.length === 0 ? <div className="muted">No cases available.</div> : null}
               </div>
             </div>
           )}
