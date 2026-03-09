@@ -21,8 +21,15 @@
   --cc-shadow: 0 8px 24px rgba(6, 182, 212, 0.12);
 }
 
-html, body, #root { max-width: 100%; overflow-x: hidden; }
-body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: radial-gradient(circle at top right, #ecfeff 0%, var(--cc-bg-soft) 45%, #f8fafc 100%); color: var(--cc-text); }
+html, body, #root { width: 100%; max-width: 100%; overflow-x: clip; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: radial-gradient(circle at top right, #ecfeff 0%, var(--cc-bg-soft) 45%, #f8fafc 100%);
+  color: var(--cc-text);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
 
 .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
 .auth-card { width: min(460px, 100%); background: var(--cc-surface); border: 1px solid var(--cc-border); border-radius: 16px; padding: 20px; display: grid; gap: 10px; box-shadow: var(--cc-shadow); }
@@ -125,7 +132,7 @@ button.chip.cat-general { background: #f8fafc; color: #334155; border-color: #cb
 .calendar-cell .dot { background: #dcfce7; color: #166534; border-radius: 999px; font-size: 12px; padding: 2px 8px; }
 
 @media (max-width: 1100px) {
-  .layout { grid-template-columns: 1fr; width: 100%; }
+  .layout { grid-template-columns: 1fr; width: 100%; max-width: 100dvw; overflow-x: clip; }
   .sidebar { border-bottom: 1px solid rgba(255,255,255,.1); padding: 14px; }
   .main { padding: 12px; }
   .card { padding: 12px; }
