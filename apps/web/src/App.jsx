@@ -136,6 +136,7 @@ export default function App() {
   const [editingUserId, setEditingUserId] = useState("");
   const [editingUserName, setEditingUserName] = useState("");
   const [editingUserEmail, setEditingUserEmail] = useState("");
+  const [editingUserPhone, setEditingUserPhone] = useState("");
   const [editingUserRole, setEditingUserRole] = useState("case_worker");
   const [newCaseTitle, setNewCaseTitle] = useState("");
   const [newCaseChildFirstName, setNewCaseChildFirstName] = useState("");
@@ -390,6 +391,7 @@ export default function App() {
     setEditingUserId(u.id);
     setEditingUserName(u.fullName || "");
     setEditingUserEmail(u.email || "");
+    setEditingUserPhone(u.phoneNumber || "");
     setEditingUserRole(u.role || "case_worker");
   }
 
@@ -405,6 +407,7 @@ export default function App() {
         body: {
           fullName: editingUserName,
           email: editingUserEmail,
+          phoneNumber: editingUserPhone,
           role: editingUserRole,
         },
       });
@@ -996,7 +999,7 @@ export default function App() {
 
               <div className="item table-wrap">
                 <table className="cases-table">
-                  <thead><tr><th>Name</th><th>Email</th><th>Global Role</th><th>Action</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Global Role</th><th>Action</th></tr></thead>
                   <tbody>
                     {managerUsers.map((u) => (
                       <tr key={u.id}>
@@ -1009,6 +1012,11 @@ export default function App() {
                           {editingUserId === u.id ? (
                             <input value={editingUserEmail} onChange={(e) => setEditingUserEmail(e.target.value)} placeholder="Email" />
                           ) : u.email}
+                        </td>
+                        <td>
+                          {editingUserId === u.id ? (
+                            <input value={editingUserPhone} onChange={(e) => setEditingUserPhone(e.target.value)} placeholder="Phone number" />
+                          ) : (u.phoneNumber || "—")}
                         </td>
                         <td>
                           {editingUserId === u.id ? (

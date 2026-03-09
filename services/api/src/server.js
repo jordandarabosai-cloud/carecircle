@@ -415,7 +415,7 @@ app.get("/management/caseworkers", requireRole("admin", "case_worker", "dev_admi
 
 app.get("/management/users", requireRole("admin", "dev_admin"), async (req, res) => {
   const result = await query(
-    `SELECT DISTINCT u.id, u.email, u.full_name, u.role
+    `SELECT DISTINCT u.id, u.email, u.full_name, u.phone_number, u.role
      FROM users u
      LEFT JOIN customer_users cu ON cu.user_id = u.id
      WHERE ($1::bool OR cu.customer_id = ANY($2::uuid[]))
@@ -427,6 +427,7 @@ app.get("/management/users", requireRole("admin", "dev_admin"), async (req, res)
     id: r.id,
     email: r.email,
     fullName: r.full_name,
+    phoneNumber: r.phone_number,
     role: r.role,
   }));
 
@@ -442,7 +443,7 @@ app.patch("/management/users/:userId/role", requireRole("admin", "dev_admin"), a
   }
 
   const updated = await query(
-    `UPDATE users SET role = $2 WHERE id = $1 RETURNING id, email, full_name, role`,
+    `UPDATE users SET role = $2 WHERE id = $1 RETURNING id, email, full_name, phone_number, role`,
     [userId, role]
   );
 
@@ -454,6 +455,7 @@ app.patch("/management/users/:userId/role", requireRole("admin", "dev_admin"), a
       id: user.id,
       email: user.email,
       fullName: user.full_name,
+      phoneNumber: user.phone_number,
       role: user.role,
     },
   });
@@ -461,10 +463,10 @@ app.patch("/management/users/:userId/role", requireRole("admin", "dev_admin"), a
 
 app.patch("/management/users/:userId", requireRole("admin", "dev_admin"), async (req, res) => {
   const { userId } = req.params;
-  const { fullName, email, role } = req.body || {};
+  const { fullName, email, phoneNumber, role } = req.body || {};
 
-  if (!fullName && !email && !role) {
-    return res.status(400).json({ error: "Provide at least one field: fullName, email, role" });
+  if (!fullName && !email && !phoneNumber && !role) {
+    return res.status(400).json({ error: "Provide at least one field: fullName, email, phoneNumber, role" });
   }
 
   if (role && !VALID_ROLES.has(role)) {
@@ -476,13 +478,15 @@ app.patch("/management/users/:userId", requireRole("admin", "dev_admin"), async 
      SET
        full_name = COALESCE($2, full_name),
        email = COALESCE($3, email),
-       role = COALESCE($4, role)
+       phone_number = COALESCE($4, phone_number),
+       role = COALESCE($5, role)
      WHERE id = $1
-     RETURNING id, email, full_name, role`,
+     RETURNING id, email, full_name, phone_number, role`,
     [
       userId,
       fullName ? String(fullName).trim() : null,
       email ? String(email).trim().toLowerCase() : null,
+      phoneNumber ? String(phoneNumber).trim() : null,
       role || null,
     ]
   );
@@ -495,6 +499,7 @@ app.patch("/management/users/:userId", requireRole("admin", "dev_admin"), async 
       id: user.id,
       email: user.email,
       fullName: user.full_name,
+      phoneNumber: user.phone_number,
       role: user.role,
     },
   });
