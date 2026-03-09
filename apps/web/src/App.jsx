@@ -825,32 +825,6 @@ export default function App() {
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh</button>
               </div>
 
-              <div className="item">
-                <h3>Create Case (Platform)</h3>
-                <div className="row">
-                  <select value={newCaseOrganizationId} onChange={(e) => setNewCaseOrganizationId(e.target.value)}>
-                    <option value="">Select organization…</option>
-                    {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
-                  </select>
-                  <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
-                  <button onClick={createCase}>Create Case</button>
-                </div>
-                <div className="row">
-                  <input value={newCaseChildFirstName} onChange={(e) => setNewCaseChildFirstName(e.target.value)} placeholder="Child first name" />
-                  <input value={newCaseChildLastName} onChange={(e) => setNewCaseChildLastName(e.target.value)} placeholder="Child last name" />
-                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
-                  <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
-                </div>
-                <div className="row">
-                  <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
-                    <option value="low">low</option><option value="normal">normal</option><option value="high">high</option><option value="urgent">urgent</option>
-                  </select>
-                  <select value={newCaseStatus} onChange={(e) => setNewCaseStatus(e.target.value)}>
-                    <option value="open">open</option><option value="active">active</option><option value="closed">closed</option>
-                  </select>
-                </div>
-                <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
-              </div>
 
               <div className="row">
                 <label className="muted">Organization Role</label>
@@ -956,6 +930,34 @@ export default function App() {
                 <h3>All Cases (Platform)</h3>
                 <button className="secondary" onClick={loadDevelopmentData}>Refresh Cases</button>
               </div>
+
+              <div className="item">
+                <h3>Create Case (Platform)</h3>
+                <div className="row">
+                  <select value={newCaseOrganizationId} onChange={(e) => setNewCaseOrganizationId(e.target.value)}>
+                    <option value="">Select organization…</option>
+                    {devCustomers.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+                  </select>
+                  <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
+                  <button onClick={createCase}>Create Case</button>
+                </div>
+                <div className="row">
+                  <input value={newCaseChildFirstName} onChange={(e) => setNewCaseChildFirstName(e.target.value)} placeholder="Child first name" />
+                  <input value={newCaseChildLastName} onChange={(e) => setNewCaseChildLastName(e.target.value)} placeholder="Child last name" />
+                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                  <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                </div>
+                <div className="row">
+                  <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
+                    <option value="low">low</option><option value="normal">normal</option><option value="high">high</option><option value="urgent">urgent</option>
+                  </select>
+                  <select value={newCaseStatus} onChange={(e) => setNewCaseStatus(e.target.value)}>
+                    <option value="open">open</option><option value="active">active</option><option value="closed">closed</option>
+                  </select>
+                </div>
+                <textarea value={newCaseSummary} onChange={(e) => setNewCaseSummary(e.target.value)} placeholder="Case summary / intake notes" rows={3} />
+              </div>
+
               <div className="item table-wrap">
                 <table className="cases-table">
                   <thead>
