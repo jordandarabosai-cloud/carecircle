@@ -97,6 +97,12 @@ h4 { margin: 0 0 6px; }
 
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .between { justify-content: space-between; }
+.case-form { display: grid; gap: 8px; }
+.case-form .row > input,
+.case-form .row > select { flex: 1 1 220px; }
+.case-form .row > button { flex: 0 0 auto; }
+.case-form .child-row > input { flex: 1 1 220px; }
+.case-form .child-row > button { min-width: 88px; }
 
 button, input, select, textarea { border-radius: 10px; border: 1px solid #bae6fd; padding: 10px 12px; font: inherit; max-width: 100%; }
 button { background: linear-gradient(90deg, var(--cc-primary), var(--cc-secondary)); color: #fff; border: none; cursor: pointer; font-weight: 600; transition: transform .05s ease, box-shadow .15s ease; }
