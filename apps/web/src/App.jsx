@@ -143,8 +143,9 @@ export default function App() {
   const [newUserPhone, setNewUserPhone] = useState("");
   const [newUserRole, setNewUserRole] = useState("case_worker");
   const [newCaseTitle, setNewCaseTitle] = useState("");
-  const [newCaseChildren, setNewCaseChildren] = useState([{ firstName: "", lastName: "" }]);
-  const [newCaseBioParentName, setNewCaseBioParentName] = useState("");
+  const [newCaseChildren, setNewCaseChildren] = useState([{ firstName: "", lastName: "", age: "", gender: "" }]);
+  const [newCaseBioMotherName, setNewCaseBioMotherName] = useState("");
+  const [newCaseBioFatherName, setNewCaseBioFatherName] = useState("");
   const [newCaseFosterParentName, setNewCaseFosterParentName] = useState("");
   const [newCasePriority, setNewCasePriority] = useState("normal");
   const [newCaseStatus, setNewCaseStatus] = useState("open");
@@ -663,12 +664,12 @@ export default function App() {
   }
 
   function addNewCaseChild() {
-    setNewCaseChildren((prev) => [...prev, { firstName: "", lastName: "" }]);
+    setNewCaseChildren((prev) => [...prev, { firstName: "", lastName: "", age: "", gender: "" }]);
   }
 
   function removeNewCaseChild(index) {
     setNewCaseChildren((prev) => {
-      if (prev.length <= 1) return [{ firstName: "", lastName: "" }];
+      if (prev.length <= 1) return [{ firstName: "", lastName: "", age: "", gender: "" }];
       return prev.filter((_, i) => i !== index);
     });
   }
@@ -677,10 +678,11 @@ export default function App() {
     setEditingCaseId(c.id);
     setNewCaseTitle(c.title || "");
     const children = Array.isArray(c.children) && c.children.length
-      ? c.children.map((child) => ({ firstName: child.firstName || "", lastName: child.lastName || "" }))
-      : [{ firstName: c.childFirstName || "", lastName: c.childLastName || "" }];
-    setNewCaseChildren(children.length ? children : [{ firstName: "", lastName: "" }]);
-    setNewCaseBioParentName(c.biologicalParentName || "");
+      ? c.children.map((child) => ({ firstName: child.firstName || "", lastName: child.lastName || "", age: child.age || "", gender: child.gender || "" }))
+      : [{ firstName: c.childFirstName || "", lastName: c.childLastName || "", age: "", gender: "" }];
+    setNewCaseChildren(children.length ? children : [{ firstName: "", lastName: "", age: "", gender: "" }]);
+    setNewCaseBioMotherName(c.biologicalMotherName || "");
+    setNewCaseBioFatherName(c.biologicalFatherName || "");
     setNewCaseFosterParentName(c.fosterParentName || "");
     setNewCasePriority(c.priority || "normal");
     setNewCaseStatus(c.status || "open");
@@ -697,7 +699,12 @@ export default function App() {
   async function saveCaseEdits({ includeOrganization = false } = {}) {
     if (!editingCaseId || !newCaseTitle.trim()) return;
     const normalizedChildren = newCaseChildren
-      .map((c) => ({ firstName: (c.firstName || "").trim(), lastName: (c.lastName || "").trim() }))
+      .map((c) => ({
+        firstName: (c.firstName || "").trim(),
+        lastName: (c.lastName || "").trim(),
+        age: String(c.age || "").trim(),
+        gender: String(c.gender || "").trim(),
+      }))
       .filter((c) => c.firstName || c.lastName);
 
     setLoading(true); setError("");
@@ -705,7 +712,8 @@ export default function App() {
       const body = {
         title: newCaseTitle.trim(),
         children: normalizedChildren,
-        biologicalParentName: newCaseBioParentName || null,
+        biologicalMotherName: newCaseBioMotherName || null,
+        biologicalFatherName: newCaseBioFatherName || null,
         fosterParentName: newCaseFosterParentName || null,
         priority: newCasePriority,
         status: newCaseStatus,
@@ -723,9 +731,14 @@ export default function App() {
   async function createCase() {
     if (!newCaseTitle.trim()) return;
     const normalizedChildren = newCaseChildren
-      .map((c) => ({ firstName: (c.firstName || "").trim(), lastName: (c.lastName || "").trim() }))
+      .map((c) => ({
+        firstName: (c.firstName || "").trim(),
+        lastName: (c.lastName || "").trim(),
+        age: String(c.age || "").trim(),
+        gender: String(c.gender || "").trim(),
+      }))
       .filter((c) => c.firstName || c.lastName);
-    const [primaryChild = { firstName: "", lastName: "" }] = normalizedChildren;
+    const [primaryChild = { firstName: "", lastName: "", age: "", gender: "" }] = normalizedChildren;
 
     setLoading(true); setError("");
     try {
@@ -739,7 +752,8 @@ export default function App() {
           childFirstName: primaryChild.firstName || undefined,
           childLastName: primaryChild.lastName || undefined,
           children: normalizedChildren,
-          biologicalParentName: newCaseBioParentName || undefined,
+          biologicalMotherName: newCaseBioMotherName || undefined,
+          biologicalFatherName: newCaseBioFatherName || undefined,
           fosterParentName: newCaseFosterParentName || undefined,
           priority: newCasePriority,
           status: newCaseStatus,
@@ -749,8 +763,9 @@ export default function App() {
       });
 
       setNewCaseTitle("");
-      setNewCaseChildren([{ firstName: "", lastName: "" }]);
-      setNewCaseBioParentName("");
+      setNewCaseChildren([{ firstName: "", lastName: "", age: "", gender: "" }]);
+      setNewCaseBioMotherName("");
+      setNewCaseBioFatherName("");
       setNewCaseFosterParentName("");
       setNewCasePriority("normal");
       setNewCaseStatus("open");
@@ -1267,7 +1282,8 @@ export default function App() {
                   <button onClick={createCase}>Create Case</button>
                 </div>
                 <div className="row">
-                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                  <input value={newCaseBioMotherName} onChange={(e) => setNewCaseBioMotherName(e.target.value)} placeholder="Biological mother" />
+                  <input value={newCaseBioFatherName} onChange={(e) => setNewCaseBioFatherName(e.target.value)} placeholder="Biological father" />
                   <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
                 </div>
                 <div className="muted">Children</div>
@@ -1275,6 +1291,8 @@ export default function App() {
                   <div className="row child-row" key={`new-case-child-${idx}`}>
                     <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
                     <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                    <input value={child.age} onChange={(e) => updateNewCaseChild(idx, "age", e.target.value)} placeholder="Age" inputMode="numeric" />
+                    <select value={child.gender} onChange={(e) => updateNewCaseChild(idx, "gender", e.target.value)}><option value="">Gender</option><option value="female">Female</option><option value="male">Male</option><option value="non_binary">Non-binary</option><option value="other">Other</option></select>
                     {idx > 0 ? <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)}>Remove</button> : null}
                   </div>
                 ))}
@@ -1306,7 +1324,8 @@ export default function App() {
                     <button className="secondary" type="button" onClick={cancelEditingCase}>Cancel</button>
                   </div>
                   <div className="row">
-                    <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                    <input value={newCaseBioMotherName} onChange={(e) => setNewCaseBioMotherName(e.target.value)} placeholder="Biological mother" />
+                  <input value={newCaseBioFatherName} onChange={(e) => setNewCaseBioFatherName(e.target.value)} placeholder="Biological father" />
                     <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
                   </div>
                   <div className="muted">Children</div>
@@ -1314,6 +1333,8 @@ export default function App() {
                     <div className="row child-row" key={`edit-case-child-${idx}`}>
                       <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
                       <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                    <input value={child.age} onChange={(e) => updateNewCaseChild(idx, "age", e.target.value)} placeholder="Age" inputMode="numeric" />
+                    <select value={child.gender} onChange={(e) => updateNewCaseChild(idx, "gender", e.target.value)}><option value="">Gender</option><option value="female">Female</option><option value="male">Male</option><option value="non_binary">Non-binary</option><option value="other">Other</option></select>
                       {idx > 0 ? <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)}>Remove</button> : null}
                     </div>
                   ))}
@@ -1419,12 +1440,15 @@ export default function App() {
                   <div className="row" key={`manager-new-case-child-${idx}`}>
                     <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
                     <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                    <input value={child.age} onChange={(e) => updateNewCaseChild(idx, "age", e.target.value)} placeholder="Age" inputMode="numeric" />
+                    <select value={child.gender} onChange={(e) => updateNewCaseChild(idx, "gender", e.target.value)}><option value="">Gender</option><option value="female">Female</option><option value="male">Male</option><option value="non_binary">Non-binary</option><option value="other">Other</option></select>
                     <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)} disabled={newCaseChildren.length === 1}>Remove</button>
                   </div>
                 ))}
                 <div className="row">
                   <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
-                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                  <input value={newCaseBioMotherName} onChange={(e) => setNewCaseBioMotherName(e.target.value)} placeholder="Biological mother" />
+                  <input value={newCaseBioFatherName} onChange={(e) => setNewCaseBioFatherName(e.target.value)} placeholder="Biological father" />
                   <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
                 </div>
                 <div className="row">
@@ -1456,12 +1480,15 @@ export default function App() {
                     <div className="row" key={`manager-edit-case-child-${idx}`}>
                       <input value={child.firstName} onChange={(e) => updateNewCaseChild(idx, "firstName", e.target.value)} placeholder={`Child ${idx + 1} first name`} />
                       <input value={child.lastName} onChange={(e) => updateNewCaseChild(idx, "lastName", e.target.value)} placeholder={`Child ${idx + 1} last name`} />
+                    <input value={child.age} onChange={(e) => updateNewCaseChild(idx, "age", e.target.value)} placeholder="Age" inputMode="numeric" />
+                    <select value={child.gender} onChange={(e) => updateNewCaseChild(idx, "gender", e.target.value)}><option value="">Gender</option><option value="female">Female</option><option value="male">Male</option><option value="non_binary">Non-binary</option><option value="other">Other</option></select>
                       <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)} disabled={newCaseChildren.length === 1}>Remove</button>
                     </div>
                   ))}
                   <div className="row">
                     <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
-                    <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                    <input value={newCaseBioMotherName} onChange={(e) => setNewCaseBioMotherName(e.target.value)} placeholder="Biological mother" />
+                  <input value={newCaseBioFatherName} onChange={(e) => setNewCaseBioFatherName(e.target.value)} placeholder="Biological father" />
                     <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
                   </div>
                   <div className="row">
@@ -1858,3 +1885,4 @@ export default function App() {
     </div>
   );
 }
+

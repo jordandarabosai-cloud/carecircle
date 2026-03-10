@@ -330,7 +330,7 @@ app.get("/cases", async (req, res) => {
 
   const caseRows = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by,
-            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.biological_mother_name, c.biological_father_name, c.foster_parent_name,
             c.priority, c.status, c.summary
      FROM cases c
      INNER JOIN case_members cm ON cm.case_id = c.id
@@ -343,7 +343,7 @@ app.get("/cases", async (req, res) => {
   const caseIds = caseRows.rows.map((r) => r.id);
   const childrenResult = caseIds.length
     ? await query(
-      `SELECT case_id, first_name, last_name, sort_order
+      `SELECT case_id, first_name, last_name, age, gender, sort_order
        FROM case_children
        WHERE case_id = ANY($1::uuid[])
        ORDER BY case_id ASC, sort_order ASC, created_at ASC`,
@@ -357,6 +357,8 @@ app.get("/cases", async (req, res) => {
     childrenByCaseId.get(row.case_id).push({
       firstName: row.first_name,
       lastName: row.last_name,
+      age: row.age,
+      gender: row.gender,
       sortOrder: row.sort_order,
     });
   }
@@ -370,6 +372,8 @@ app.get("/cases", async (req, res) => {
     childLastName: r.child_last_name,
     children: childrenByCaseId.get(r.id) || [],
     biologicalParentName: r.biological_parent_name,
+    biologicalMotherName: r.biological_mother_name,
+    biologicalFatherName: r.biological_father_name,
     fosterParentName: r.foster_parent_name,
     priority: r.priority,
     status: r.status,
@@ -384,7 +388,7 @@ app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), a
 
   const result = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by,
-            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.biological_mother_name, c.biological_father_name, c.foster_parent_name,
             c.priority, c.status, c.summary,
             u.full_name AS primary_case_worker_name,
             u.id AS primary_case_worker_id,
@@ -406,7 +410,7 @@ app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), a
   const caseIds = result.rows.map((r) => r.id);
   const childrenResult = caseIds.length
     ? await query(
-      `SELECT case_id, first_name, last_name, sort_order
+      `SELECT case_id, first_name, last_name, age, gender, sort_order
        FROM case_children
        WHERE case_id = ANY($1::uuid[])
        ORDER BY case_id ASC, sort_order ASC, created_at ASC`,
@@ -420,6 +424,8 @@ app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), a
     childrenByCaseId.get(row.case_id).push({
       firstName: row.first_name,
       lastName: row.last_name,
+      age: row.age,
+      gender: row.gender,
       sortOrder: row.sort_order,
     });
   }
@@ -433,6 +439,8 @@ app.get("/management/cases", requireRole("admin", "case_worker", "dev_admin"), a
     childLastName: r.child_last_name,
     children: childrenByCaseId.get(r.id) || [],
     biologicalParentName: r.biological_parent_name,
+    biologicalMotherName: r.biological_mother_name,
+    biologicalFatherName: r.biological_father_name,
     fosterParentName: r.foster_parent_name,
     priority: r.priority,
     status: r.status,
@@ -808,7 +816,7 @@ app.post("/development/organizations/:customerId/users/assign", requireRole("dev
 app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
   const result = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by, c.customer_id,
-            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.biological_mother_name, c.biological_father_name, c.foster_parent_name,
             c.priority, c.status, c.summary,
             cust.name AS organization_name,
             u.id AS primary_case_worker_id,
@@ -829,7 +837,7 @@ app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
   const caseIds = result.rows.map((r) => r.id);
   const childrenResult = caseIds.length
     ? await query(
-      `SELECT case_id, first_name, last_name, sort_order
+      `SELECT case_id, first_name, last_name, age, gender, sort_order
        FROM case_children
        WHERE case_id = ANY($1::uuid[])
        ORDER BY case_id ASC, sort_order ASC, created_at ASC`,
@@ -843,6 +851,8 @@ app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
     childrenByCaseId.get(row.case_id).push({
       firstName: row.first_name,
       lastName: row.last_name,
+      age: row.age,
+      gender: row.gender,
       sortOrder: row.sort_order,
     });
   }
@@ -858,6 +868,8 @@ app.get("/development/cases", requireRole("dev_admin"), async (_req, res) => {
     childLastName: r.child_last_name,
     children: childrenByCaseId.get(r.id) || [],
     biologicalParentName: r.biological_parent_name,
+    biologicalMotherName: r.biological_mother_name,
+    biologicalFatherName: r.biological_father_name,
     fosterParentName: r.foster_parent_name,
     priority: r.priority,
     status: r.status,
@@ -981,6 +993,8 @@ app.post("/cases", async (req, res) => {
     childLastName,
     children,
     biologicalParentName,
+    biologicalMotherName,
+    biologicalFatherName,
     fosterParentName,
     priority,
     status,
@@ -1002,9 +1016,11 @@ app.post("/cases", async (req, res) => {
     ? children
     : [{ firstName: childFirstName, lastName: childLastName }];
   const normalizedChildren = parsedChildren
-    .map((c) => ({
+     .map((c) => ({
       firstName: String(c?.firstName || "").trim(),
       lastName: String(c?.lastName || "").trim(),
+      age: String(c?.age || "").trim(),
+      gender: String(c?.gender || "").trim(),
     }))
     .filter((c) => c.firstName || c.lastName);
   const primaryChild = normalizedChildren[0] || {
@@ -1034,12 +1050,12 @@ app.post("/cases", async (req, res) => {
   const createResult = await query(
     `INSERT INTO cases(
        id, title, created_by, customer_id,
-       child_first_name, child_last_name, biological_parent_name, foster_parent_name,
+       child_first_name, child_last_name, biological_parent_name, biological_mother_name, biological_father_name, foster_parent_name,
        priority, status, summary
      )
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      RETURNING id, title, created_at, created_by, customer_id,
-               child_first_name, child_last_name, biological_parent_name, foster_parent_name,
+               child_first_name, child_last_name, biological_parent_name, biological_mother_name, biological_father_name, foster_parent_name,
                priority, status, summary`,
     [
       randomUUID(),
@@ -1049,6 +1065,8 @@ app.post("/cases", async (req, res) => {
       primaryChild.firstName || null,
       primaryChild.lastName || null,
       biologicalParentName || null,
+      biologicalMotherName || biologicalParentName || null,
+      biologicalFatherName || null,
       fosterParentName || null,
       safePriority,
       safeStatus,
@@ -1074,9 +1092,9 @@ app.post("/cases", async (req, res) => {
       const child = normalizedChildren[i];
       // eslint-disable-next-line no-await-in-loop
       await query(
-        `INSERT INTO case_children(id, case_id, first_name, last_name, sort_order)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [randomUUID(), record.id, child.firstName || null, child.lastName || null, i]
+        `INSERT INTO case_children(id, case_id, first_name, last_name, age, gender, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [randomUUID(), record.id, child.firstName || null, child.lastName || null, child.age || null, child.gender || null, i]
       );
     }
   }
@@ -1105,6 +1123,8 @@ app.post("/cases", async (req, res) => {
       childLastName: record.child_last_name,
       children: normalizedChildren,
       biologicalParentName: record.biological_parent_name,
+      biologicalMotherName: record.biological_mother_name,
+      biologicalFatherName: record.biological_father_name,
       fosterParentName: record.foster_parent_name,
       priority: record.priority,
       status: record.status,
@@ -1130,6 +1150,8 @@ app.patch("/cases/:caseId", requireRole("admin", "case_worker", "dev_admin"), as
     childLastName,
     children,
     biologicalParentName,
+    biologicalMotherName,
+    biologicalFatherName,
     fosterParentName,
     priority,
     status,
@@ -1149,6 +1171,8 @@ app.patch("/cases/:caseId", requireRole("admin", "case_worker", "dev_admin"), as
 
   if (title !== undefined) setField("title", String(title || "").trim());
   if (biologicalParentName !== undefined) setField("biological_parent_name", biologicalParentName || null);
+  if (biologicalMotherName !== undefined || biologicalParentName !== undefined) setField("biological_mother_name", biologicalMotherName || biologicalParentName || null);
+  if (biologicalFatherName !== undefined) setField("biological_father_name", biologicalFatherName || null);
   if (fosterParentName !== undefined) setField("foster_parent_name", fosterParentName || null);
   if (priority !== undefined) setField("priority", ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal");
   if (status !== undefined) setField("status", ["open", "active", "closed"].includes(status) ? status : "open");
@@ -1191,16 +1215,16 @@ app.patch("/cases/:caseId", requireRole("admin", "case_worker", "dev_admin"), as
       const child = normalizedChildren[i];
       // eslint-disable-next-line no-await-in-loop
       await query(
-        `INSERT INTO case_children(id, case_id, first_name, last_name, sort_order)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [randomUUID(), caseId, child.firstName || null, child.lastName || null, i]
+        `INSERT INTO case_children(id, case_id, first_name, last_name, age, gender, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [randomUUID(), caseId, child.firstName || null, child.lastName || null, child.age || null, child.gender || null, i]
       );
     }
   }
 
   const row = await query(
     `SELECT c.id, c.title, c.created_at, c.created_by, c.customer_id,
-            c.child_first_name, c.child_last_name, c.biological_parent_name, c.foster_parent_name,
+            c.child_first_name, c.child_last_name, c.biological_parent_name, c.biological_mother_name, c.biological_father_name, c.foster_parent_name,
             c.priority, c.status, c.summary
      FROM cases c
      WHERE c.id = $1
@@ -1208,7 +1232,7 @@ app.patch("/cases/:caseId", requireRole("admin", "case_worker", "dev_admin"), as
     [caseId]
   );
   const childrenRows = await query(
-    `SELECT first_name, last_name, sort_order
+    `SELECT first_name, last_name, age, gender, sort_order
      FROM case_children
      WHERE case_id = $1
      ORDER BY sort_order ASC, created_at ASC`,
@@ -1227,8 +1251,10 @@ app.patch("/cases/:caseId", requireRole("admin", "case_worker", "dev_admin"), as
       organizationId: record.customer_id,
       childFirstName: record.child_first_name,
       childLastName: record.child_last_name,
-      children: childrenRows.rows.map((c) => ({ firstName: c.first_name, lastName: c.last_name, sortOrder: c.sort_order })),
+      children: childrenRows.rows.map((c) => ({ firstName: c.first_name, lastName: c.last_name, age: c.age, gender: c.gender, sortOrder: c.sort_order })),
       biologicalParentName: record.biological_parent_name,
+      biologicalMotherName: record.biological_mother_name,
+      biologicalFatherName: record.biological_father_name,
       fosterParentName: record.foster_parent_name,
       priority: record.priority,
       status: record.status,
@@ -1772,3 +1798,4 @@ bootstrap().catch((err) => {
   console.error("Failed to start CareCircle API", err);
   process.exit(1);
 });
+
