@@ -1275,11 +1275,11 @@ export default function App() {
                   </div>
                 ))}
                 <div className="row">
-                  <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
-                </div>
-                <div className="row">
                   <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
                   <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                </div>
+                <div className="row">
+                  <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
                 </div>
                 <div className="row">
                   <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
@@ -1314,11 +1314,11 @@ export default function App() {
                     </div>
                   ))}
                   <div className="row">
-                    <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
-                  </div>
-                  <div className="row">
                     <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
                     <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                  </div>
+                  <div className="row">
+                    <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
                   </div>
                   <div className="row">
                     <select value={newCasePriority} onChange={(e) => setNewCasePriority(e.target.value)}>
