@@ -1266,6 +1266,10 @@ export default function App() {
                   <input value={newCaseTitle} onChange={(e) => setNewCaseTitle(e.target.value)} placeholder="Case title (required)" />
                   <button onClick={createCase}>Create Case</button>
                 </div>
+                <div className="row">
+                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                  <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                </div>
                 <div className="muted">Children</div>
                 {newCaseChildren.map((child, idx) => (
                   <div className="row child-row" key={`new-case-child-${idx}`}>
@@ -1274,10 +1278,6 @@ export default function App() {
                     {idx > 0 ? <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)}>Remove</button> : null}
                   </div>
                 ))}
-                <div className="row">
-                  <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
-                  <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
-                </div>
                 <div className="row">
                   <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
                 </div>
@@ -1305,6 +1305,10 @@ export default function App() {
                     <button onClick={() => saveCaseEdits({ includeOrganization: true })}>Save Changes</button>
                     <button className="secondary" type="button" onClick={cancelEditingCase}>Cancel</button>
                   </div>
+                  <div className="row">
+                    <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
+                    <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
+                  </div>
                   <div className="muted">Children</div>
                   {newCaseChildren.map((child, idx) => (
                     <div className="row child-row" key={`edit-case-child-${idx}`}>
@@ -1313,10 +1317,6 @@ export default function App() {
                       {idx > 0 ? <button className="secondary" type="button" onClick={() => removeNewCaseChild(idx)}>Remove</button> : null}
                     </div>
                   ))}
-                  <div className="row">
-                    <input value={newCaseBioParentName} onChange={(e) => setNewCaseBioParentName(e.target.value)} placeholder="Biological parent name" />
-                    <input value={newCaseFosterParentName} onChange={(e) => setNewCaseFosterParentName(e.target.value)} placeholder="Foster parent name" />
-                  </div>
                   <div className="row">
                     <button className="secondary" type="button" onClick={addNewCaseChild}>+ Add Child</button>
                   </div>
